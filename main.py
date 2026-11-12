@@ -4,10 +4,23 @@ from dataclasses import dataclass
 from bakery import assert_equal
 from drafter import *
 
+set_site_information(
+    author = "David Ciupei"
+    description = "Cybersecurity",
+    sources = "LLM use for the template, ",
+    planning = "",
+    links = ["https://t3.chat/share/4jor4lmt84","https://t3.chat/share/tfl3i1erc","https://t3.chat/share/td1jvtzswf"]
+    )
 
 @dataclass
 class SafetyTip:
-    """One actionable habit and the user's current completion choice."""
+    """
+    Creates a safteytip
+    args:
+        title (str) - the name of the safety tip
+        advice (str) - the advice that is a part of the tip (the description)
+        completed (bool) - a checklist change if the tip has been completed 
+    """
     title: str
     advice: str
     completed: bool
@@ -15,7 +28,13 @@ class SafetyTip:
 
 @dataclass
 class State:
-    """Session progress only; never store emails, passwords or their hashes."""
+    """
+    Session state
+    args:
+        tips: list[SafetyTip] - creates the list of safety tips for the checklist
+        quiz_score: int - the total score a user gets on the quiz 
+        
+    """
     tips: list[SafetyTip]
     quiz_score: int
     quiz_attempts: int
