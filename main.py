@@ -1,5 +1,3 @@
-
-
 from dataclasses import dataclass
 from bakery import assert_equal
 from drafter import *
@@ -7,9 +5,9 @@ from drafter import *
 set_site_information(
     author = "David Ciupei",
     description = "Cybersecurity",
-    sources = "LLM use for the template, ",
+    sources = "LLM use for the template ",
     planning = "",
-    links = ["https://t3.chat/share/4jor4lmt84","https://t3.chat/share/tfl3i1erc","https://t3.chat/share/td1jvtzswf"]
+    links = ["https://t3.chat/share/4jor4lmt84","https://t3.chat/share/tfl3i1erc","https://t3.chat/share/td1jvtzswf","https://chatgpt.com/s/cx_6af6414a64648191b9246e67444c59a1","https://xposedornot.com/api_doc","https://www.cisa.gov/secure-our-world","https://www.cisa.gov/secure-our-world","https://www.fbi.gov/how-we-can-help-you/online-safety/"]
     )
 
 @dataclass
@@ -32,8 +30,10 @@ class State:
     Session state
     args:
         tips: list[SafetyTip] - creates the list of safety tips for the checklist
-        quiz_score: int - the total score a user gets on the quiz 
-        
+        quiz_score: int - the total score a user gets on the quiz
+        quiz_attempts: int - the number of completed quizzes
+        recommendations: list[str] - the advice based on the user's quiz answers
+        focus: str - the area the user wants to focus on
     """
     tips: list[SafetyTip]
     quiz_score: int
@@ -68,7 +68,13 @@ CHOICES = ("Choose an answer", "Yes", "Sometimes", "No")
 
 
 def initial_state() -> State:
-    """Create independent progress for a new visit."""
+    """
+    Creates the starting progress for a new visit
+    args:
+        None
+    returns:
+        State - the starting safety tips, quiz progress, recommendations, and focus
+    """
     return State([
         SafetyTip("Unique passwords", QUESTIONS[0][1], False),
         SafetyTip("Multifactor authentication", QUESTIONS[3][1], False),
@@ -80,7 +86,15 @@ def initial_state() -> State:
 
 
 def shell(state: State, title: str, content: list) -> Page:
-    """Wrap each page with consistent navigation and source attribution."""
+    """
+    Creates a page with navigation links, a title, and a footer
+    args:
+        state (State) - the current session state
+        title (str) - the heading shown on the page
+        content (list) - the text and components shown on the page
+    returns:
+        Page - the page with the shared layout
+    """
     return Page(state, [
         Div(Link("CYBER COMPASS", "index"), Link("Tools", "password_tools"),
             Link("Checklist", "checklist"), Link("Quiz", "quiz"),
@@ -93,14 +107,29 @@ def shell(state: State, title: str, content: list) -> Page:
 
 
 def tile(number: str, title: str, description: str, target: str) -> Div:
-    """Make a navigable home card with its entire surface clickable."""
+    """
+    Creates a card with a link to another page
+    args:
+        number (str) - the number shown on the card
+        title (str) - the name of the card
+        description (str) - the description of the page the card links to
+        target (str) - the route the card links to
+    returns:
+        Div - the card with its number, title, description, and link
+    """
     return Div(Span(number, classes="tile-number"), Header(title, 2),
                description, Link("Open " + title + " →", target), classes="tile")
 
 
 @route
 def index(state: State) -> Page:
-    """Show four tiles leading to the site's four main areas."""
+    """
+    Shows the home page with links to the four main areas
+    args:
+        state (State) - the current session state
+    returns:
+        Page - the home page with the four cards
+    """
     return shell(state, "A safer digital life starts here.", [
         Div("Small actions. Stronger protection.", classes="intro"),
         "Explore your habits, check for known exposure, and build a practical plan.",
@@ -115,7 +144,13 @@ def index(state: State) -> Page:
 
 @route
 def password_tools(state: State) -> Page:
-    """Stack independent private password and email checkers on one page."""
+    """
+    Shows the password and email checking tools
+    args:
+        state (State) - the current session state
+    returns:
+        Page - the page with the password checker and email checker
+    """
     return shell(state, "Password & email checks", [
         Header("Check a password", 2),
         "Try a sample password. The length check is educational, not a security guarantee.",
@@ -135,12 +170,24 @@ def password_tools(state: State) -> Page:
 
 @route
 def email_tools(state: State) -> Page:
-    """Keep the email-only route available for direct navigation."""
+    """
+    Shows the email checker on its own page
+    args:
+        state (State) - the current session state
+    returns:
+        Page - the page with the email checker
+    """
     return shell(state, "Has your email appeared in a breach?", email_content())
 
 
 def email_content() -> list:
-    """Build the reusable email panel with its own consent and result area."""
+    """
+    Creates the content for the email checker
+    args:
+        None
+    returns:
+        list - the email input, consent checkbox, result area, and source links
+    """
     return [
         "This free check uses XposedOrNot, a separate database from Have I Been Pwned.",
         RawHTML('''<section class="panel private-tools">
@@ -161,7 +208,13 @@ def email_content() -> list:
 
 @route
 def checklist(state: State) -> Page:
-    """Loop over tip objects and show their attributes and saved progress."""
+    """
+    Shows the safety tips and the user's saved progress
+    args:
+        state (State) - the current session state with the safety tips and focus
+    returns:
+        Page - the checklist page with checkboxes, a focus selection, and a save button
+    """
     content = []
     completed = 0
     for position, tip in enumerate(state.tips):
@@ -182,7 +235,20 @@ def checklist(state: State) -> Page:
 @route
 def save_checklist(state: State, tip0: bool, tip1: bool, tip2: bool,
                    tip3: bool, tip4: bool, tip5: bool, focus: str) -> Page:
-    """Meaningfully update the list of SafetyTip instances and focus field."""
+    """
+    Saves the completed safety tips and the user's selected focus
+    args:
+        state (State) - the current session state to update
+        tip0 (bool) - whether the unique passwords tip has been completed
+        tip1 (bool) - whether the multifactor authentication tip has been completed
+        tip2 (bool) - whether the phishing awareness tip has been completed
+        tip3 (bool) - whether the software updates tip has been completed
+        tip4 (bool) - whether the reliable backups tip has been completed
+        tip5 (bool) - whether the account recovery tip has been completed
+        focus (str) - the selected focus, saved if it is Accounts, Devices, or Awareness
+    returns:
+        Page - the checklist page with the updated progress
+    """
     choices = [tip0, tip1, tip2, tip3, tip4, tip5]
     for position, tip in enumerate(state.tips):
         tip.completed = choices[position]
@@ -193,7 +259,13 @@ def save_checklist(state: State, tip0: bool, tip1: bool, tip2: bool,
 
 @route
 def quiz(state: State) -> Page:
-    """Ask ten non-sensitive questions about existing security habits."""
+    """
+    Shows ten questions about the user's cybersecurity habits
+    args:
+        state (State) - the current session state
+    returns:
+        Page - the quiz page with answer selections and a submit button
+    """
     content = ["Answer honestly. This is a habit check, not a technical security audit."]
     for position, question in enumerate(QUESTIONS):
         field = SelectBox("q" + str(position), list(CHOICES))
@@ -205,7 +277,23 @@ def quiz(state: State) -> Page:
 @route
 def score_quiz(state: State, q0: str, q1: str, q2: str, q3: str, q4: str,
                q5: str, q6: str, q7: str, q8: str, q9: str) -> Page:
-    """Validate every answer before changing score, attempts or recommendations."""
+    """
+    Checks the answers and updates the quiz score, attempts, and recommendations
+    args:
+        state (State) - the current session state to update after all answers are valid
+        q0 (str) - the answer about using different passwords for each account
+        q1 (str) - the answer about using long random passwords or passphrases
+        q2 (str) - the answer about using a password manager
+        q3 (str) - the answer about enabling multifactor authentication
+        q4 (str) - the answer about verifying unexpected messages
+        q5 (str) - the answer about installing security updates
+        q6 (str) - the answer about keeping and checking backups
+        q7 (str) - the answer about locking devices
+        q8 (str) - the answer about reviewing app permissions and removing unused apps
+        q9 (str) - the answer about knowing how to recover important accounts
+    returns:
+        Page - the results page, or the quiz with a message if any answer is invalid
+    """
     answers = [q0, q1, q2, q3, q4, q5, q6, q7, q8, q9]
     for answer in answers:
         if answer not in CHOICES[1:]:
@@ -228,7 +316,13 @@ def score_quiz(state: State, q0: str, q1: str, q2: str, q3: str, q4: str,
 
 @route
 def results(state: State) -> Page:
-    """Explain the score and show specific suggestions for missed habits."""
+    """
+    Shows the quiz score and advice based on the user's answers
+    args:
+        state (State) - the current session state with the quiz results
+    returns:
+        Page - the results and recommendations, or a message to take the quiz first
+    """
     if state.quiz_attempts == 0:
         return shell(state, "Your action plan", ["Take the quiz to build your plan.", Button("Start quiz", "quiz")])
     if state.quiz_score >= 16:
@@ -248,7 +342,13 @@ def results(state: State) -> Page:
 
 @route
 def about(state: State) -> Page:
-    """Explain scope, data flows, limitations and source attribution."""
+    """
+    Shows the project's purpose, privacy information, limitations, and sources
+    args:
+        state (State) - the current session state
+    returns:
+        Page - the information page with source links and a reset button
+    """
     return shell(state, "Know the tools. Know the limits.", [
         Header("Our goal", 2),
         "Cyber Compass helps students learn practical cybersecurity habits and respond to known exposure.",
@@ -277,7 +377,14 @@ def about(state: State) -> Page:
 
 @route
 def reset_progress(state: State) -> Page:
-    """Replace current progress; browser Back may still show older session pages."""
+    """
+    Creates a new state to reset the checklist and quiz progress
+    args:
+        state (State) - the current session state being replaced
+    returns:
+        Page - the reset confirmation page with a new starting state
+            
+    """
     return shell(initial_state(), "Progress reset", [
         "Current progress has been reset. Reload the browser to clear older Drafter history too.",
         Button("Return home", "index"),
@@ -285,12 +392,13 @@ def reset_progress(state: State) -> Page:
 
 
 def run_bakery_tests() -> None:
-    """Test every application function using independent, non-sensitive state.
-
-    Browser JavaScript and live API responses need browser checks rather than
-    Python Bakery assertions. No network requests are made by these tests.
-    Test variables stay local so they cannot become global application state.
     """
+    Tests the application functions using separate example state
+    args:
+        None
+    returns:
+        None - checks the expected results using Bakery assertions.
+        """
     state = initial_state()
     assert_equal(len(state.tips), 6)
     assert_equal(state.quiz_score, 0)
