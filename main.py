@@ -219,4 +219,4 @@ def about_page(state: State) -> Page:
     )
 
 
-start_server(State("", "", 0, "", ""))
+start_server()
