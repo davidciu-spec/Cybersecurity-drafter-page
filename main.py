@@ -342,12 +342,6 @@ set_website_framed(False)
 hide_debug_information()
 add_website_css_file("style.css")
 add_website_js_file("private-tools.js")
-set_site_information(
-    "David — CISC 106 project with OpenAI Codex assistance",
-    "Cybersecurity education, habit checklist, quiz and privacy-conscious breach lookups.",
-    "CISA; FBI; HIBP Pwned Passwords; XposedOrNot. See About and README.md.",
-    "Planning.docx in the repository.",
-    ["https://haveibeenpwned.com/API/V3", "https://xposedornot.com/api_doc"],
-)
+
 start_server(initial_state(), port=8001, host="127.0.0.1", open_browser=True)
 
