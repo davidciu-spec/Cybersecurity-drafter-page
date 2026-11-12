@@ -5,7 +5,7 @@ from bakery import assert_equal
 from drafter import *
 
 set_site_information(
-    author = "David Ciupei"
+    author = "David Ciupei",
     description = "Cybersecurity",
     sources = "LLM use for the template, ",
     planning = "",
