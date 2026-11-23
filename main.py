@@ -35,12 +35,16 @@ class State:
         quiz_attempts: int - the number of completed quizzes
         recommendations: list[str] - the advice based on the user's quiz answers
         focus: str - the area the user wants to focus on
+        priority_tips: list[int] - positions of the checklist tips that match weak quiz answers
+        highlight: bool - whether the checklist currently highlights the priority tips
     """
     tips: list[SafetyTip]
     quiz_score: int
     quiz_attempts: int
     recommendations: list[str]
     focus: str
+    priority_tips: list[int]
+    highlight: bool
 
 
 QUESTIONS = (
@@ -66,6 +70,8 @@ QUESTIONS = (
      "Review recovery options and keep recovery codes somewhere secure."),
 )
 CHOICES = ("Choose an answer", "Yes", "Sometimes", "No")
+# Position of the checklist tip each quiz question relates to (None = no matching tip)
+QUESTION_TIPS = (0, 0, 0, 1, 2, 3, 4, None, None, 5)
 
 
 def initial_state() -> State:
@@ -83,7 +89,7 @@ def initial_state() -> State:
         SafetyTip("Software updates", QUESTIONS[5][1], False),
         SafetyTip("Reliable backups", QUESTIONS[6][1], False),
         SafetyTip("Account recovery", QUESTIONS[9][1], False),
-    ], 0, 0, [], "Accounts")
+    ], 0, 0, [], "Accounts", [], False)
 
 
 def shell(state: State, title: str, content: list) -> Page:
@@ -206,7 +212,32 @@ def email_content() -> list:
 @route
 def checklist(state: State) -> Page:
     """
-    Shows the safety tips and the user's saved progress
+    Shows the safety tips and the user's saved progress, without highlights
+    args:
+        state (State) - the current session state with the safety tips and focus
+    returns:
+        Page - the checklist page with checkboxes, a focus selection, and a save button
+    """
+    state.highlight = False
+    return checklist_page(state)
+
+
+@route
+def action_plan(state: State) -> Page:
+    """
+    Shows the checklist with the tips that match the user's quiz results highlighted
+    args:
+        state (State) - the current session state with the quiz results
+    returns:
+        Page - the checklist page with the matching tips highlighted
+    """
+    state.highlight = True
+    return checklist_page(state)
+
+
+def checklist_page(state: State) -> Page:
+    """
+    Creates the checklist page, highlighting priority tips when state.highlight is True
     args:
         state (State) - the current session state with the safety tips and focus
     returns:
@@ -214,17 +245,32 @@ def checklist(state: State) -> Page:
     """
     content = []
     completed = 0
+    flagged = []
     for position, tip in enumerate(state.tips):
         if tip.completed:
             completed += 1
         field = CheckBox("tip" + str(position), tip.completed)
-        content.append(Div(Header(tip.title, 2), tip.advice,
+        classes = "panel"
+        if state.highlight and position in state.priority_tips and not tip.completed:
+            classes = "panel priority"
+            flagged.append(tip.title)
+            title = Header(tip.title + " · Recommended from your quiz", 2)
+        else:
+            title = Header(tip.title, 2)
+        content.append(Div(title, tip.advice,
                            Label("I have done this", field), field,
-                           classes="panel"))
+                           classes=classes))
+    intro = []
+    if state.highlight and flagged:
+        intro.append(Div("Based on your quiz, start with: " + ", ".join(flagged) + ".",
+                         classes="panel priority-note"))
+    elif state.highlight:
+        intro.append(Div("Your quiz answers don't point to any unfinished checklist habits. "
+                         "Keep it up.", classes="panel priority-note"))
     focus_field = SelectBox("focus", ["Accounts", "Devices", "Awareness"], state.focus)
     return shell(state, "Your safety checklist", [
         str(completed) + " of 6 habits completed. Progress lasts for this open session.",
-        *content, Label("My current focus", focus_field), focus_field,
+        *intro, *content, Label("My current focus", focus_field), focus_field,
         Button("Save my progress", "save_checklist"),
     ])
 
@@ -251,7 +297,7 @@ def save_checklist(state: State, tip0: bool, tip1: bool, tip2: bool,
         tip.completed = choices[position]
     if focus in ["Accounts", "Devices", "Awareness"]:
         state.focus = focus
-    return checklist(state)
+    return checklist_page(state)
 
 
 @route
@@ -299,14 +345,18 @@ def score_quiz(state: State, q0: str, q1: str, q2: str, q3: str, q4: str,
             return page
     state.quiz_score = 0
     state.recommendations = []
+    state.priority_tips = []
+    state.highlight = False
     for position, answer in enumerate(answers):
         if answer == "Yes":
             state.quiz_score += 2
-        elif answer == "Sometimes":
+            continue
+        if answer == "Sometimes":
             state.quiz_score += 1
-            state.recommendations.append(QUESTIONS[position][1])
-        else:
-            state.recommendations.append(QUESTIONS[position][1])
+        state.recommendations.append(QUESTIONS[position][1])
+        tip_position = QUESTION_TIPS[position]
+        if tip_position is not None and tip_position not in state.priority_tips:
+            state.priority_tips.append(tip_position)
     state.quiz_attempts += 1
     return results(state)
 
@@ -333,7 +383,7 @@ def results(state: State) -> Page:
         Header(str(state.quiz_score) + " / 20 habit points", 2), message,
         "This score reflects your answers; it does not measure your risk of being hacked.",
         *[Div(suggestion, classes="panel") for suggestion in suggestions],
-        Button("Turn advice into action", "checklist"), Button("Retake quiz", "quiz"),
+        Button("Turn advice into action", "action_plan"), Button("Retake quiz", "quiz"),
     ])
 
 
@@ -432,7 +482,22 @@ def run_bakery_tests() -> None:
     assert_equal(state.quiz_attempts, 3)
     assert_equal(state.quiz_score, 0)
     assert_equal(state.recommendations, [question[1] for question in QUESTIONS])
-    reset = reset_progress(state)
+    assert_equal(state.priority_tips, [0, 1, 2, 3, 4, 5])
+    assert_equal("priority" in str(checklist(state).content), False)
+    assert_equal(str(action_plan(state).content).count("Recommended from your quiz"), 6)
+    state.tips[0].completed = True
+    assert_equal(str(action_plan(state).content).count("Recommended from your quiz"), 5)
+    state.tips[0].completed = False
+    score_quiz(state, "Yes", "Yes", "Yes", "No", "Yes", "Yes", "Yes", "No", "Yes", "Yes")
+    assert_equal(state.priority_tips, [1])
+    assert_equal("Multifactor authentication · Recommended" in str(action_plan(state).content), True)
+    assert_equal("Unique passwords · Recommended" in str(action_plan(state).content), False)
+    assert_equal(save_checklist(state, False, False, False, False, False, False, "Devices").state.highlight, True)
+    assert_equal(checklist(state).state.highlight, False)
+    score_quiz(state, *(["Yes"] * 10))
+    assert_equal("don't point to any" in str(action_plan(state).content), True)
+    score_quiz(state, *(["No"] * 10))
+    reset =reset_progress(state)
     assert_equal(reset.state, initial_state())
     assert_equal(reset.state is state, False)
     assert_equal("Progress reset" in str(reset.content), True)

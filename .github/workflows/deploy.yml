@@ -205,32 +205,75 @@ jobs:
             echo "No Drafter assertion output was detected during compilation." > _site/dashboard/tests.txt
           fi
 
-      # Speed up the first page load. In the browser, Drafter installs itself
-      # from PyPI with all of its dependencies, which pulls in matplotlib and
-      # its NumPy/fonttools/etc. stack (tens of MB). This site never plots
-      # anything, and Drafter only imports matplotlib lazily for
-      # MatPlotLibPlot, so register a mock package before Drafter is
-      # installed and skip that download entirely.
-      - name: Skip unused browser packages
+      # Speed up the first page load. By default the browser installs Drafter
+      # from PyPI: a ~6 MB wheel that is mostly JavaScript the browser never
+      # uses (the site already serves it from __drafter_assets), plus
+      # matplotlib and other dependencies resolved one request at a time.
+      # Instead, bundle only the Python code of Drafter and Bakery into a
+      # small zip published with the site, and point the loader at it.
+      # If the loader's format changes, index.html is left untouched and the
+      # site still loads Drafter from PyPI (just more slowly).
+      - name: Bundle a slim Drafter runtime
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
+
+          # Use exactly the Drafter version the generated page asks for.
+          VERSION="$(grep -oP 'const url = "drafter==\K[^"]+' _site/index.html || true)"
+          if [[ -z "$VERSION" ]]; then
+            echo "::warning::Drafter loader changed; the slim runtime was not bundled."
+            exit 0
+          fi
+
+          RUNTIME_DIR="$RUNNER_TEMP/drafter-runtime"
+          rm -rf "$RUNTIME_DIR"
+          uv pip install --quiet --no-deps --target "$RUNTIME_DIR" \
+            --python "$DIAGNOSTIC_VENV/bin/python" \
+            "drafter==$VERSION" bakery
+
+          python - "$RUNTIME_DIR" "$VERSION" <<'PY'
+          import json
+          import re
+          import sys
+          import zipfile
           from pathlib import Path
 
+          runtime, version = Path(sys.argv[1]), sys.argv[2]
           index = Path("_site/index.html")
           html = index.read_text(encoding="utf-8")
-          marker = "await window.Drafter.mountDrafterRemote(url);"
-          mocks = ["matplotlib"]
-          patch = "".join(
-              f'window.micropip.add_mock_package("{name}", "1.0.0");\n        '
-              for name in mocks
+
+          # Only the Python code is needed in the browser. Drafter's assets/
+          # folder (~32 MB unpacked) is already published under __drafter_assets.
+          zip_path = Path("_site/drafter-runtime.zip")
+          with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as bundle:
+              for path in sorted(runtime.rglob("*")):
+                  relative = path.relative_to(runtime)
+                  if not path.is_file() or relative.suffix in {".pyc", ".pyo"}:
+                      continue
+                  if relative.parts[0].split("-")[0] not in {"drafter", "bakery"}:
+                      continue
+                  if "__pycache__" in relative.parts or relative.parts[:2] == ("drafter", "assets"):
+                      continue
+                  bundle.write(path, relative.as_posix())
+
+          # The "./" matters: the loader treats any URL that starts with
+          # "drafter" as a PyPI requirement instead of a zip to download.
+          html = html.replace(
+              f'const url = "drafter=={version}";',
+              'const url = "./drafter-runtime.zip";',
+              1,
           )
-          if marker in html:
-              index.write_text(html.replace(marker, patch + marker, 1), encoding="utf-8")
-              print("Mocked browser packages:", ", ".join(mocks))
-          else:
-              print("::warning::Drafter loader changed; unused packages were not skipped.")
+
+          # Bakery is inside the zip now, so don't also install it from PyPI.
+          def drop_bakery(match):
+              packages = [name for name in json.loads(match.group(1)) if name != "bakery"]
+              return "systemPackages: " + json.dumps(packages) + ","
+
+          html = re.sub(r"systemPackages: (\[[^\]]*\]),", drop_bakery, html, count=1)
+
+          index.write_text(html, encoding="utf-8")
+          size_kb = zip_path.stat().st_size // 1024
+          print(f"Bundled Drafter {version} and Bakery for the browser: {size_kb} KB")
           PY
 
       - name: Run tests and output code coverage
