@@ -107,7 +107,6 @@ def shell(state: State, title: str, content: list) -> Page:
         Div(Link("Home", "index"), Link("Tools", "password_tools"),
             Link("Checklist", "checklist"), Link("Quiz", "quiz"),
             Link("About", "about"), classes="navigation"),
-        Div("PERSONAL CYBERSECURITY / CISC 106", classes="eyebrow"),
         Header(title), *content,
     ])
 
@@ -398,15 +397,17 @@ def about(state: State) -> Page:
         Header("Our goal", 2),
         "Cyber Compass helps students learn practical cybersecurity habits and respond to known exposure.",
         Header("Your data", 2),
-        "No accounts, analytics, database, cookies or browser storage are added by this project. "
-        "Checklist and quiz progress live in Drafter's browser session and page history. Reload to clear them.",
-        "Password and email inputs bypass Drafter State and route history. They clear when submitted. "
-        "Results are transient page text. Browsers, extensions and operating systems may retain memory; "
-        "we cannot promise forensic erasure or control third-party logging.",
-        "Passwords are hashed locally with Web Crypto. Only a five-character SHA-1 prefix is sent to HIBP "
-        "over HTTPS; matching happens locally. SHA-1 here is a lookup format, not password storage.",
-        "Email searches send the full address directly to XposedOrNot after consent. That provider can "
-        "process or log the request under its own policies. Neither address nor results are stored by this app.",
+        "Cyber Compass does not store any of your data. There are no accounts, databases, cookies or "
+        "analytics. Checklist and quiz progress only last while the page is open and clear when you reload.",
+        "The site only contacts outside services when you press a check button on the Tools page:",
+        Div(Header("Password check: Have I Been Pwned", 3),
+            "Your password is hashed in your browser, and only the first five characters of that hash are "
+            "sent to the Pwned Passwords API. The API sends back a list of matching hashes and the comparison "
+            "happens on your device, so your password never leaves it.", classes="panel"),
+        Div(Header("Email check: XposedOrNot", 3),
+            "With your consent, the email address is sent to the XposedOrNot API, which replies with any known "
+            "breaches it appears in. XposedOrNot handles that request under its own privacy policy; this site "
+            "does not keep the address or the results.", classes="panel"),
         Header("What a result means", 2),
         "A match means known exposure, not proof your current account is compromised. No match is not "
         "proof of safety. Change exposed or reused passwords, enable MFA, and review account activity.",
