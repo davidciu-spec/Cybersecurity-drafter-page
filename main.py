@@ -38,6 +38,11 @@ class State:
         focus: str - the area the user wants to focus on ("" when none is chosen)
         priority_tips: list[int] - positions of the checklist tips that match weak quiz answers
         highlight: bool - whether the checklist currently highlights the priority tips
+        phish_position: int - the position of the Spot the Phish message being shown
+        phish_score: int - the number of Spot the Phish messages answered correctly
+        phish_guess: str - the answer for the current message ("" when not answered yet)
+        exposures: list[str] - the kinds of data the user said a breach exposed
+        platform: str - the device chosen on the device setup page ("" when none is chosen)
     """
     tips: list[SafetyTip]
     quiz_score: int
@@ -46,6 +51,47 @@ class State:
     focus: str
     priority_tips: list[int]
     highlight: bool
+    phish_position: int
+    phish_score: int
+    phish_guess: str
+    exposures: list[str]
+    platform: str
+
+
+@dataclass
+class SampleMessage:
+    """
+    Creates a practice message for the Spot the Phish activity
+    args:
+        kind (str) - how the message arrived ("Email" or "Text message")
+        sender (str) - who the message says it is from
+        subject (str) - the subject line ("" for a text message)
+        body (str) - the main text of the message
+        link (str) - the web address the message shows ("" for none); it is never clickable
+        is_phish (bool) - whether the message is a phishing attempt
+        clues (list[str]) - the signs that show whether the message is phishing
+    """
+    kind: str
+    sender: str
+    subject: str
+    body: str
+    link: str
+    is_phish: bool
+    clues: list[str]
+
+
+@dataclass
+class GuideStep:
+    """
+    Creates one step of the breach or device guides
+    args:
+        title (str) - what to do
+        where (str) - where to find the setting ("" when there is no setting to find)
+        why (str) - how to do it and why it helps
+    """
+    title: str
+    where: str
+    why: str
 
 
 QUESTIONS = (
@@ -77,6 +123,205 @@ QUESTION_TIPS = (0, 0, 0, 1, 2, 3, 4, None, None, 5)
 FOCUS_TIPS = {"Accounts": [0, 1, 5], "Devices": [3, 4], "Awareness": [2]}
 FOCUS_CHOICES = ("Choose a focus", "Accounts", "Devices", "Awareness")
 
+# Spot the Phish: practice messages. Every company and address here is made up.
+MESSAGES = (
+    SampleMessage(
+        "Email", "SwiftShip Delivery <alerts@swiftship-redelivery.net>",
+        "Action required: your parcel is on hold",
+        "We tried to deliver your parcel today, but an unpaid customs fee of $1.99 is due. "
+        "Pay within 24 hours or your parcel will be returned to the sender.",
+        "swiftship-redelivery.net/pay-fee", True,
+        ["The sender's domain isn't the delivery company's own website. Scammers register "
+         "lookalike names.",
+         "A tiny fee with a 24-hour deadline is a common trick to collect card details quickly.",
+         "To check a real parcel, type its tracking number into the company's official app or site."]),
+    SampleMessage(
+        "Email", "IT Service Desk <servicedesk@yourschool.edu>",
+        "Planned email maintenance this Saturday",
+        "Email will be unavailable on Saturday from 2 a.m. to 4 a.m. while we install updates. "
+        "You don't need to do anything. Status updates will be posted on the IT page of the "
+        "student portal.",
+        "", False,
+        ["It comes from the school's real domain and matches what IT normally sends.",
+         "It asks for nothing: no sign-in, no download and no reply.",
+         "It sends you to a place you already know, the student portal, instead of a link."]),
+    SampleMessage(
+        "Text message", "+1 (302) 555-0148", "",
+        "First Harbor Bank: we blocked an unusual sign-in to your account. If this wasn't you, "
+        "verify your identity now to avoid suspension.",
+        "firstharbor-secure-login.co/verify", True,
+        ["Banks don't text you links asking you to sign in or verify your identity.",
+         "The link adds words like 'secure' and 'login' to look official, and it isn't the "
+         "bank's real website.",
+         "The threat of suspension is there to rush you. Open the bank's app or call the number "
+         "on your card instead."]),
+    SampleMessage(
+        "Text message", "StreamBox", "",
+        "Your StreamBox sign-in code is 482913. It expires in 10 minutes. StreamBox will never "
+        "ask you for this code.",
+        "", False,
+        ["You'd expect this code if you just signed in, and it only asks you to type it yourself.",
+         "It warns you never to share the code. Scammers often call pretending to be support "
+         "and ask for it.",
+         "If a code arrives when you didn't sign in, someone may know your password. Change it "
+         "in the official app."]),
+    SampleMessage(
+        "Email", "Webmail Admin <admin@yourschool-mail.support>",
+        "Mailbox 99% full: messages will be deleted",
+        "Dear user, your mailbox has reached its storage limit. New messages will be rejected "
+        "and older ones deleted in 12 hours. Sign in below to keep your email.",
+        "yourschool-mail.support/keep-my-mail", True,
+        ["The address looks like the school's, but yourschool-mail.support is a different website.",
+         "A generic greeting ('Dear user') and a short deadline are classic phishing signs.",
+         "The link leads to a fake sign-in page that collects passwords. Check your storage by "
+         "signing in the way you normally do."]),
+    SampleMessage(
+        "Email", "Prof. Lee <prof.lee.office@gmail.com>", "Quick favour?",
+        "Are you free? I'm stuck in meetings all day and need a favour for a student event. "
+        "Please buy four $100 gift cards and email me photos of the codes. I'll pay you back "
+        "this week. Please keep this between us for now.",
+        "", True,
+        ["Requests to buy gift cards are almost always scams, because the money can't be traced "
+         "or returned.",
+         "It uses a personal email address instead of the school address professors normally use.",
+         "Urgency and secrecy are pressure tactics. Check with the professor through the school "
+         "directory or in person."]),
+)
+PHISH_CHOICES = ("Phishing", "Legitimate")
+PHISH_RED_FLAGS = (
+    "A sender or link that is close to, but not exactly, the real company's address",
+    "Urgency, threats or short deadlines",
+    "Requests for passwords, sign-in codes, payments or gift cards",
+    "A generic greeting, or an unusual request from someone you know",
+    "When in doubt, ignore the message's link. Open the official app or website yourself.",
+)
+
+# Breach next steps: (key, checkbox label, section heading)
+EXPOSURE_TYPES = (
+    ("password", "A password", "If a password was exposed"),
+    ("email", "My email address", "If your email address was exposed"),
+    ("financial", "Card or bank details", "If card or bank details were exposed"),
+    ("identity", "An ID number, such as a Social Security number", "If an ID number was exposed"),
+)
+FIRST_STEPS = (
+    GuideStep("Go to the source yourself", "",
+              "Don't click links in breach-notice emails or texts. Open the company's website or app "
+              "yourself to read what happened."),
+    GuideStep("Secure your email first", "",
+              "Your email can reset every other account, so give it a unique password and turn on MFA."),
+    GuideStep("Watch for follow-up scams", "",
+              "Scammers use breach news to send convincing phishing. Practise on the Spot the Phish page."),
+)
+BREACH_STEPS = {
+    "password": [
+        GuideStep("Change the exposed password", "",
+                  "Replace it with a new, unique password, ideally one generated by a password manager."),
+        GuideStep("Change it everywhere you reused it", "",
+                  "Attackers try leaked passwords on other sites. Start with email, banking and shopping."),
+        GuideStep("Turn on multifactor authentication", "",
+                  "MFA blocks most sign-ins that use a stolen password."),
+        GuideStep("Sign out other sessions", "",
+                  "In the account's security settings, sign out devices you don't recognise and review "
+                  "recent activity."),
+    ],
+    "email": [
+        GuideStep("Expect targeted phishing", "",
+                  "Messages may mention the breached service by name. Treat them with extra suspicion."),
+        GuideStep("Check whether a password leaked too", "",
+                  "Read the company's breach notice. If passwords were included, follow the password "
+                  "steps as well."),
+        GuideStep("Watch for password resets you didn't request", "",
+                  "They can mean someone is trying to get into your accounts."),
+    ],
+    "financial": [
+        GuideStep("Call your bank or card issuer", "",
+                  "Use the number on the back of your card and ask whether you need a replacement card."),
+        GuideStep("Review recent transactions", "",
+                  "Look for charges you don't recognise, even small ones, and report them straight away."),
+        GuideStep("Turn on transaction alerts", "",
+                  "Most banking apps can notify you about every purchase."),
+    ],
+    "identity": [
+        GuideStep("Freeze your credit", "",
+                  "A freeze stops new accounts being opened in your name. It is free with each of the "
+                  "three credit bureaus: Equifax, Experian and TransUnion."),
+        GuideStep("Check your credit reports", "",
+                  "Get free reports at AnnualCreditReport.com and look for accounts you didn't open."),
+        GuideStep("Report identity theft", "",
+                  "If someone has used your information, report it at IdentityTheft.gov to get a "
+                  "recovery plan."),
+    ],
+}
+
+# Device setup: the five settings that matter most on each kind of device
+PLATFORMS = ("Choose a device", "Windows", "Mac", "iPhone", "Android")
+DEVICE_GUIDES = {
+    "Windows": [
+        GuideStep("Lock your screen", "Settings > Accounts > Sign-in options",
+                  "Set up a PIN or Windows Hello, and ask Windows to require sign-in every time "
+                  "you've been away."),
+        GuideStep("Install updates automatically", "Settings > Windows Update",
+                  "Check for updates and turn on getting the latest updates as soon as they're available."),
+        GuideStep("Back up your files", "Settings > Accounts > Windows backup",
+                  "Back up your folders to OneDrive, or use File History with an external drive."),
+        GuideStep("Turn on Find my device", "Settings > Privacy & security > Find my device",
+                  "Lets you locate and lock a lost laptop. It needs a Microsoft account."),
+        GuideStep("Encrypt your drive", "Settings > Privacy & security > Device encryption",
+                  "Keeps your files unreadable if the laptop is stolen. Windows Pro calls this BitLocker."),
+    ],
+    "Mac": [
+        GuideStep("Lock your screen", "System Settings > Lock Screen",
+                  "Require your password immediately after the screen saver starts or the display "
+                  "turns off."),
+        GuideStep("Install updates automatically", "System Settings > General > Software Update",
+                  "Turn on automatic updates, including security responses and system files."),
+        GuideStep("Back up with Time Machine", "System Settings > General > Time Machine",
+                  "Add an external drive as a backup disk. iCloud Drive can also keep your documents."),
+        GuideStep("Turn on Find My Mac", "System Settings > [your name] > iCloud",
+                  "Lets you locate, lock or erase a lost Mac."),
+        GuideStep("Turn on FileVault", "System Settings > Privacy & Security > FileVault",
+                  "Encrypts your disk so a stolen Mac doesn't expose your files."),
+    ],
+    "iPhone": [
+        GuideStep("Use a strong passcode", "Settings > Face ID & Passcode",
+                  "Use a passcode of at least six digits, and set Auto-Lock in Settings > Display & "
+                  "Brightness."),
+        GuideStep("Install updates automatically", "Settings > General > Software Update > Automatic Updates",
+                  "Turn on automatic download and installation of iOS updates and security responses."),
+        GuideStep("Back up to iCloud", "Settings > [your name] > iCloud > iCloud Backup",
+                  "A lost or broken phone then doesn't mean losing your photos and messages."),
+        GuideStep("Turn on Find My iPhone", "Settings > [your name] > Find My",
+                  "Lets you locate, lock or erase a lost iPhone."),
+        GuideStep("Turn on Stolen Device Protection", "Settings > Face ID & Passcode",
+                  "Requires Face ID or Touch ID for sensitive changes away from familiar places, even "
+                  "if a thief knows your passcode."),
+    ],
+    "Android": [
+        GuideStep("Set a screen lock", "Settings > Security & privacy > Screen lock",
+                  "Choose a PIN, password or pattern, and add fingerprint or face unlock if you like."),
+        GuideStep("Install updates", "Settings > System > Software updates",
+                  "Install system updates and Google Play system updates when they're offered."),
+        GuideStep("Back up your phone", "Settings > Google > Backup",
+                  "Saves your photos, contacts and settings to your Google account."),
+        GuideStep("Turn on Find Hub", "Settings > Google > Find Hub (formerly Find My Device)",
+                  "Lets you locate, lock or erase a lost phone."),
+        GuideStep("Keep Play Protect on", "Play Store > your profile picture > Play Protect",
+                  "Scans apps for harmful behaviour. Install apps only from the Play Store."),
+    ],
+}
+DEVICE_SOURCES = {
+    "Windows": [("Microsoft: Windows help and learning", "https://support.microsoft.com/en-us/windows"),
+                ("Microsoft: Find and lock a lost Windows device",
+                 "https://support.microsoft.com/en-us/account-billing/find-and-lock-a-lost-windows-device-"
+                 "890bf25e-b8ba-d3fe-8253-e98a12f26316")],
+    "Mac": [("Apple: Mac User Guide", "https://support.apple.com/guide/mac-help/welcome/mac")],
+    "iPhone": [("Apple: iPhone User Guide", "https://support.apple.com/guide/iphone/welcome/ios")],
+    "Android": [("Google: Find, secure, or erase a lost Android device",
+                 "https://support.google.com/android/answer/6160491"),
+                ("Google: Back up or restore data on your Android device",
+                 "https://support.google.com/android/answer/2819582")],
+}
+
 
 def initial_state() -> State:
     """
@@ -84,7 +329,7 @@ def initial_state() -> State:
     args:
         None
     returns:
-        State - the starting safety tips, quiz progress, recommendations, and focus
+        State - the starting safety tips, quiz progress, recommendations, focus, and page choices
     """
     return State([
         SafetyTip("Unique passwords", QUESTIONS[0][1], False),
@@ -93,7 +338,7 @@ def initial_state() -> State:
         SafetyTip("Software updates", QUESTIONS[5][1], False),
         SafetyTip("Reliable backups", QUESTIONS[6][1], False),
         SafetyTip("Account recovery", QUESTIONS[9][1], False),
-    ], 0, 0, [], "", [], False)
+    ], 0, 0, [], "", [], False, 0, 0, "", [], "")
 
 
 def shell(state: State, title: str, content: list, lead: str = "",
@@ -105,13 +350,15 @@ def shell(state: State, title: str, content: list, lead: str = "",
         title (str) - the heading shown on the page
         content (list) - the text and components shown on the page
         lead (str) - a short sentence shown under the heading (empty for none)
-        active (str) - the navigation link for this section ("Tools", "Checklist", "Quiz", "About", or "")
+        active (str) - the navigation link for this section ("Tools", "Phishing", "Devices",
+                       "Checklist", "Quiz", "About", or "")
         hero (bool) - whether to show the large home page heading
     returns:
         Page - the page with the shared layout
     """
     links = [Link("Cyber Compass", "index", classes="brand")]
-    for name, target in [("Tools", "password_tools"), ("Checklist", "checklist"),
+    for name, target in [("Tools", "password_tools"), ("Phishing", "phish_spotter"),
+                         ("Devices", "device_guide"), ("Checklist", "checklist"),
                          ("Quiz", "quiz"), ("About", "about")]:
         if name == active:
             links.append(Link(name, target, classes="active"))
@@ -139,7 +386,7 @@ def tile(icon: str, number: str, title: str, description: str, target: str) -> D
     """
     Creates a card with a link to another page
     args:
-        icon (str) - the icon name for the card (key, checklist, quiz, or shield)
+        icon (str) - the icon name for the card (key, alert, checklist, quiz, mail, or device)
         number (str) - the number shown on the card
         title (str) - the name of the card
         description (str) - the description of the page the card links to
@@ -154,18 +401,22 @@ def tile(icon: str, number: str, title: str, description: str, target: str) -> D
 @route
 def index(state: State) -> Page:
     """
-    Shows the home page with links to the four main areas
+    Shows the home page with links to the six main areas
     args:
         state (State) - the current session state
     returns:
-        Page - the home page with the four cards
+        Page - the home page with the six cards
     """
     return shell(state, "Cyber Compass", [
         Div(
             tile("key", "01", "Password & breach tools", "Check passwords and email exposure.", "password_tools"),
-            tile("checklist", "02", "Cyber Safety checklist", "Turn advice into six everyday habits.", "checklist"),
-            tile("quiz", "03", "Cyber Safety Quiz", "Ten questions. A plan based on your answers.", "quiz"),
-            tile("shield", "04", "About & privacy", "Understand the project and where your data goes.", "about"),
+            tile("alert", "02", "After a breach", "Clear next steps when your data shows up in a leak.",
+                 "breach_steps"),
+            tile("checklist", "03", "Cyber Safety checklist", "Turn advice into six everyday habits.", "checklist"),
+            tile("quiz", "04", "Cyber Safety Quiz", "Ten questions. A plan based on your answers.", "quiz"),
+            tile("mail", "05", "Spot the Phish", "Six practice messages. Can you tell which are fake?",
+                 "phish_spotter"),
+            tile("device", "06", "Device setup", "Lock down your laptop or phone, step by step.", "device_guide"),
             classes="tiles"),
     ], "Learn practical cybersecurity habits, one small step at a time.", hero=True)
 
@@ -192,6 +443,7 @@ def password_tools(state: State) -> Page:
         of its SHA-1 hash go to Have I Been Pwned. The field clears immediately.</p>
         <button type="button" data-private="password">Check password</button>
         <p id="password-result" class="private-result" role="status" aria-live="polite"></p></section>'''),
+        breach_link(),
     ], "See if a password or email address has shown up in a known data breach.", "Tools")
 
 
@@ -204,7 +456,7 @@ def email_tools(state: State) -> Page:
     returns:
         Page - the page with the email checker
     """
-    return shell(state, "Has your email appeared in a breach?", email_content(),
+    return shell(state, "Has your email appeared in a breach?", email_content() + [breach_link()],
                  "A quick, private look at known breaches.", "Tools")
 
 
@@ -230,6 +482,18 @@ def email_content() -> list:
         <button type="button" data-private="email">Check email exposure</button>
         <p id="email-result" class="private-result" role="status" aria-live="polite"></p></section>'''),
     ]
+
+
+def breach_link() -> Div:
+    """
+    Creates a card that points to the breach next steps page
+    args:
+        None
+    returns:
+        Div - the card with a short note and a link to the breach steps
+    """
+    return Div(Span("Found a match?", classes="next-step-title"),
+               Link("See what to do after a breach →", "breach_steps"), classes="panel next-step")
 
 
 @route
@@ -427,26 +691,315 @@ def results(state: State) -> Page:
             "This score reflects your answers; it does not measure your risk of being hacked.",
             classes="score-text"),
         ProgressBar(state.quiz_score, max=20, classes="progress"),
-        classes="panel score-card " + score_band(state.quiz_score))
+        classes="panel score-card " + score_band(state.quiz_score, 20))
     return shell(state, "Your next steps", [
         score_card, Header("Your next steps", 2), NumberedList(suggestions, classes="steps"),
         Button("Turn advice into action", "action_plan"), Button("Retake quiz", "quiz", classes="secondary"),
     ], "Small changes add up. Start with the first step.", "Quiz")
 
 
-def score_band(score: int) -> str:
+def score_band(score: int, total: int) -> str:
     """
-    Chooses the style class that matches a quiz score
+    Chooses the style class that matches a score
     args:
-        score (int) - the quiz score from 0 to 20
+        score (int) - the score, from 0 to total
+        total (int) - the highest possible score
     returns:
-        str - "score-high" for 16 or more, "score-mid" for 10 to 15, otherwise "score-low"
+        str - "score-high" for 80% or more, "score-mid" for 50% or more, otherwise "score-low"
     """
-    if score >= 16:
+    if score * 5 >= total * 4:
         return "score-high"
-    if score >= 10:
+    if score * 2 >= total:
         return "score-mid"
     return "score-low"
+
+
+def message_card(message: SampleMessage, position: int) -> Div:
+    """
+    Creates a card that looks like an email or text message
+    args:
+        message (SampleMessage) - the practice message to show
+        position (int) - the position of the message in MESSAGES
+    returns:
+        Div - the card with the sender, subject, body, and any link shown as plain text
+    """
+    rows = [Div(Span(message.kind, classes="message-kind"),
+                Span("Message " + str(position + 1) + " of " + str(len(MESSAGES))),
+                classes="message-meta"),
+            Div(Span("From", classes="message-label"), Span(message.sender), classes="message-row")]
+    if message.subject:
+        rows.append(Div(Span("Subject", classes="message-label"), Span(message.subject),
+                        classes="message-row"))
+    rows.append(Div(message.body, classes="message-body"))
+    if message.link:
+        rows.append(Div(Span("Link", classes="message-label"), Span(message.link, classes="fake-link"),
+                        classes="message-row"))
+    return Div(*rows, classes="panel message")
+
+
+@route
+def phish_spotter(state: State) -> Page:
+    """
+    Shows the current practice message, its feedback once answered, or the final score
+    args:
+        state (State) - the current session state with the Spot the Phish progress
+    returns:
+        Page - the message with answer buttons, the feedback for an answer, or the summary
+    """
+    if state.phish_position >= len(MESSAGES):
+        return phish_summary(state)
+    message = MESSAGES[state.phish_position]
+    content = []
+    if state.phish_position == 0 and not state.phish_guess:
+        content.append("Each message is made up but based on real scams. Decide whether it's phishing "
+                       "or legitimate. Links are shown as text only, so nothing here can be clicked.")
+    else:
+        answered = state.phish_position
+        if state.phish_guess:
+            answered += 1
+        content.append(Div("Score so far: " + str(state.phish_score) + " of " + str(answered),
+                           classes="phish-score"))
+    content.append(message_card(message, state.phish_position))
+    if not state.phish_guess:
+        content.append(Div(
+            Button("It's phishing", "check_phish", [Argument("guess", PHISH_CHOICES[0])]),
+            Button("It's legitimate", "check_phish", [Argument("guess", PHISH_CHOICES[1])],
+                   classes="secondary"),
+            classes="phish-choices"))
+    else:
+        correct = (state.phish_guess == PHISH_CHOICES[0]) == message.is_phish
+        if message.is_phish:
+            answer = "This message is phishing."
+            clue_heading = "What gives it away"
+        else:
+            answer = "This message is legitimate."
+            clue_heading = "Why it can be trusted"
+        if correct:
+            content.append(Div(Header("Correct. " + answer, 2), classes="panel verdict correct"))
+        else:
+            content.append(Div(Header("Not quite. " + answer, 2), classes="panel verdict incorrect"))
+        content.append(Header(clue_heading, 2))
+        content.append(BulletedList(message.clues, classes="clues"))
+        if state.phish_position + 1 < len(MESSAGES):
+            content.append(Button("Next message", "next_phish"))
+        else:
+            content.append(Button("See my score", "next_phish"))
+    return shell(state, "Spot the Phish", content,
+                 "Six messages. Which ones would you trust?", "Phishing")
+
+
+@route
+def check_phish(state: State, guess: str) -> Page:
+    """
+    Records the user's answer for the current message and updates the score
+    args:
+        state (State) - the current session state to update
+        guess (str) - the user's answer: "Phishing" or "Legitimate"
+    returns:
+        Page - the current message with feedback, or the unchanged page if the answer is invalid
+    """
+    if guess in PHISH_CHOICES and state.phish_position < len(MESSAGES) and not state.phish_guess:
+        state.phish_guess = guess
+        if (guess == PHISH_CHOICES[0]) == MESSAGES[state.phish_position].is_phish:
+            state.phish_score += 1
+    return phish_spotter(state)
+
+
+@route
+def next_phish(state: State) -> Page:
+    """
+    Moves on to the next practice message once the current one is answered
+    args:
+        state (State) - the current session state to update
+    returns:
+        Page - the next message, or the summary after the last one
+    """
+    if state.phish_guess:
+        state.phish_position += 1
+        state.phish_guess = ""
+    return phish_spotter(state)
+
+
+@route
+def restart_phish(state: State) -> Page:
+    """
+    Starts the Spot the Phish activity again from the first message
+    args:
+        state (State) - the current session state to reset
+    returns:
+        Page - the first practice message
+    """
+    state.phish_position = 0
+    state.phish_score = 0
+    state.phish_guess = ""
+    return phish_spotter(state)
+
+
+def phish_summary(state: State) -> Page:
+    """
+    Creates the final Spot the Phish page with the score and the red flags to remember
+    args:
+        state (State) - the current session state with the final score
+    returns:
+        Page - the summary page with the score, red flags, and next steps
+    """
+    total = len(MESSAGES)
+    band = score_band(state.phish_score, total)
+    if band == "score-high":
+        message = "Sharp eyes. You can spot the common tricks."
+    elif band == "score-mid":
+        message = "Good instincts. Review the red flags below."
+    else:
+        message = "These messages are designed to fool people. The red flags below are worth remembering."
+    score_card = Div(
+        Div(Span(str(state.phish_score), classes="score-value"), Span("/ " + str(total), classes="score-max"),
+            classes="score-number"),
+        Div(Header(str(state.phish_score) + " of " + str(total) + " spotted correctly", 2), message,
+            classes="score-text"),
+        ProgressBar(state.phish_score, max=total, classes="progress"),
+        classes="panel score-card " + band)
+    return shell(state, "Your phishing score", [
+        score_card,
+        Header("Red flags to remember", 2),
+        BulletedList(list(PHISH_RED_FLAGS), classes="clues"),
+        Header("Got a real one?", 2),
+        "Don't reply or click. Use your email app's report option, tell your school's IT team, then delete it.",
+        BulletedList([Link("CISA: Recognize and report phishing",
+                           "https://www.cisa.gov/secure-our-world/recognize-and-report-phishing")],
+                     classes="sources"),
+        Button("Tick off phishing awareness", "checklist"),
+        Button("Try again", "restart_phish", classes="secondary"),
+    ], "Phishing works by rushing you. Slowing down is the best defence.", "Phishing")
+
+
+def guide_steps(steps: list[GuideStep]) -> NumberedList:
+    """
+    Creates a numbered list of guide steps
+    args:
+        steps (list[GuideStep]) - the steps to show, in order
+    returns:
+        NumberedList - each step's title, where to find the setting (if any), and why it helps
+    """
+    items = []
+    for step in steps:
+        parts = [Header(step.title, 3)]
+        if step.where:
+            parts.append(Div(step.where, classes="settings-path"))
+        parts.append(Div(step.why))
+        items.append(Div(*parts))
+    return NumberedList(items, classes="steps")
+
+
+@route
+def breach_steps(state: State) -> Page:
+    """
+    Shows what to do after a breach, with extra steps for each kind of exposed data
+    args:
+        state (State) - the current session state with the kinds of exposed data chosen
+    returns:
+        Page - the breach page with checkboxes and the matching steps
+    """
+    boxes = []
+    for key, label, heading in EXPOSURE_TYPES:
+        field = CheckBox(key, key in state.exposures)
+        boxes.append(Div(field, Label(label, field), classes="tip-check"))
+    content = [
+        Div(Header("What was exposed?", 2), "Tick everything the breach notice or the Tools check mentioned.",
+            *boxes, Button("Show my steps", "breach_plan"), classes="panel exposure-card"),
+        Header("Start here", 2),
+        guide_steps(list(FIRST_STEPS)),
+    ]
+    for key, label, heading in EXPOSURE_TYPES:
+        if key in state.exposures:
+            content.append(Header(heading, 2))
+            content.append(guide_steps(BREACH_STEPS[key]))
+    content += [
+        Header("Official help", 2),
+        BulletedList([
+            Link("IdentityTheft.gov: Data breaches", "https://www.identitytheft.gov/databreach"),
+            Link("AnnualCreditReport.com: free credit reports", "https://www.annualcreditreport.com/"),
+            Link("CISA: Turn on multifactor authentication", "https://www.cisa.gov/secure-our-world/turn-mfa"),
+        ], classes="sources"),
+        Button("Check a password or email", "password_tools", classes="secondary"),
+    ]
+    return shell(state, "Your data was in a breach. Now what?", content,
+                 "A calm, ordered list of what to do first.", "Tools")
+
+
+@route
+def breach_plan(state: State, password: bool, email: bool, financial: bool, identity: bool) -> Page:
+    """
+    Saves which kinds of data were exposed and shows the matching steps
+    args:
+        state (State) - the current session state to update
+        password (bool) - whether a password was exposed
+        email (bool) - whether an email address was exposed
+        financial (bool) - whether card or bank details were exposed
+        identity (bool) - whether an ID number was exposed
+    returns:
+        Page - the breach page with the matching steps, or a message if nothing was ticked
+    """
+    choices = [password, email, financial, identity]
+    state.exposures = []
+    for position, (key, label, heading) in enumerate(EXPOSURE_TYPES):
+        if choices[position]:
+            state.exposures.append(key)
+    page = breach_steps(state)
+    if not state.exposures:
+        page.content.insert(3, Div("Tick at least one kind of data to see the steps for it.",
+                                   classes="panel alert"))
+    return page
+
+
+@route
+def device_guide(state: State) -> Page:
+    """
+    Shows the device picker and the setup steps for the chosen device
+    args:
+        state (State) - the current session state with the chosen device
+    returns:
+        Page - the device page with a device selection and the matching steps
+    """
+    field = SelectBox("platform", list(PLATFORMS), state.platform or PLATFORMS[0])
+    content = [Div(Label("My device", field), field, Button("Show steps", "device_steps"),
+                   classes="panel device-card")]
+    if not state.platform:
+        content.append("Choose a device to see the five settings that protect it most.")
+        return shell(state, "Set up your device safely", content,
+                     "Five settings, a few minutes each.", "Devices")
+    content.append(Header("Your " + state.platform + " checklist", 2))
+    if state.platform == "Android":
+        content.append(Div("Menus vary between phone makers. If a setting isn't where it's listed, "
+                           "search for it in Settings.", classes="panel priority-note"))
+    content.append(guide_steps(DEVICE_GUIDES[state.platform]))
+    sources = []
+    for name, url in DEVICE_SOURCES[state.platform]:
+        sources.append(Link(name, url))
+    content += [
+        Header("Official guides", 2),
+        BulletedList(sources, classes="sources"),
+        "Updates and backups are two of your checklist habits. Tick them off once they're set up.",
+        Button("Go to my checklist", "checklist"),
+    ]
+    return shell(state, "Set up your device safely", content,
+                 "Five settings, a few minutes each.", "Devices")
+
+
+@route
+def device_steps(state: State, platform: str) -> Page:
+    """
+    Saves the chosen device and shows its setup steps
+    args:
+        state (State) - the current session state to update
+        platform (str) - the chosen device: Windows, Mac, iPhone, or Android, or "Choose a device" to clear it
+    returns:
+        Page - the device page with the matching steps
+    """
+    if platform in PLATFORMS[1:]:
+        state.platform = platform
+    elif platform == PLATFORMS[0]:
+        state.platform = ""
+    return device_guide(state)
 
 
 @route
@@ -482,6 +1035,9 @@ def about(state: State) -> Page:
             Link("Have I Been Pwned API documentation", "https://haveibeenpwned.com/API/V3"),
             Link("XposedOrNot free API", "https://xposedornot.com/api_doc"),
             Link("CISA Secure Our World", "https://www.cisa.gov/secure-our-world"),
+            Link("CISA: Recognize and report phishing",
+                 "https://www.cisa.gov/secure-our-world/recognize-and-report-phishing"),
+            Link("IdentityTheft.gov: Data breaches", "https://www.identitytheft.gov/databreach"),
             Link("FBI online safety advice", "https://www.fbi.gov/how-we-can-help-you/online-safety/"
                  "stay-safe-online-simple-tips-for-adults"),
         ], classes="sources"),
@@ -531,12 +1087,12 @@ def run_bakery_tests() -> None:
     assert_equal("page-head hero" in str(index(state).content), True)
     assert_equal("Take the quiz" in str(index(state).content), False)
     assert_equal("classes='lead'" in str(index(state).content), True)
-    assert_equal(score_band(0), "score-low")
-    assert_equal(score_band(9), "score-low")
-    assert_equal(score_band(10), "score-mid")
-    assert_equal(score_band(15), "score-mid")
-    assert_equal(score_band(16), "score-high")
-    assert_equal(score_band(20), "score-high")
+    assert_equal(score_band(0, 20), "score-low")
+    assert_equal(score_band(9, 20), "score-low")
+    assert_equal(score_band(10, 20), "score-mid")
+    assert_equal(score_band(15, 20), "score-mid")
+    assert_equal(score_band(16, 20), "score-high")
+    assert_equal(score_band(20, 20), "score-high")
     assert_equal("private-consent" in str(email_content()), True)
     assert_equal("Cyber Compass" in str(index(state).content), True)
     assert_equal("private-password" in str(password_tools(state).content), True)
@@ -617,6 +1173,120 @@ def run_bakery_tests() -> None:
     assert_equal("Progress reset" in str(reset.content), True)
     assert_equal("site-footer" in str(reset.content), True)
     assert_equal(initial_state().tips[0].completed, False)
+    run_new_page_tests()
+
+
+def run_new_page_tests() -> None:
+    """
+    Tests the Spot the Phish, breach steps, and device setup pages using separate example state
+    args:
+        None
+    returns:
+        None - checks the expected results using Bakery assertions.
+    """
+    state = initial_state()
+    assert_equal(str(index(state).content).count("classes='tile'"), 6)
+    assert_equal("icon-mail" in str(index(state).content), True)
+    assert_equal("Link('Phishing', 'phish_spotter')" in str(index(state).content), True)
+    assert_equal("Link('Devices', 'device_guide')" in str(index(state).content), True)
+    assert_equal("breach_steps" in str(password_tools(state).content), True)
+    assert_equal("breach_steps" in str(email_tools(state).content), True)
+    assert_equal(score_band(4, 6), "score-mid")
+    assert_equal(score_band(5, 6), "score-high")
+    assert_equal(score_band(2, 6), "score-low")
+    # Spot the Phish: messages, answers, scoring, and moving on
+    assert_equal(len(MESSAGES), 6)
+    for message in MESSAGES:
+        assert_equal(len(message.clues), 3)
+    first = phish_spotter(state)
+    assert_equal("Link('Phishing', 'phish_spotter', classes='active')" in str(first.content), True)
+    assert_equal("Message 1 of 6" in str(first.content), True)
+    assert_equal("swiftship-redelivery.net" in str(first.content), True)
+    assert_equal("Link('swiftship" in str(first.content), False)
+    assert_equal("check_phish" in str(first.content), True)
+    assert_equal("Score so far" in str(first.content), False)
+    assert_equal("Subject" in str(message_card(MESSAGES[2], 2)), False)
+    answered = check_phish(state, "Phishing")
+    assert_equal(answered.state.phish_score, 1)
+    assert_equal(answered.state.phish_guess, "Phishing")
+    assert_equal("Correct. This message is phishing." in str(answered.content), True)
+    assert_equal("classes='panel verdict correct'" in str(answered.content), True)
+    assert_equal("What gives it away" in str(answered.content), True)
+    assert_equal("check_phish" in str(answered.content), False)
+    assert_equal("Score so far: 1 of 1" in str(answered.content), True)
+    check_phish(state, "Legitimate")
+    assert_equal(state.phish_score, 1)
+    assert_equal(state.phish_guess, "Phishing")
+    next_phish(state)
+    assert_equal(state.phish_position, 1)
+    assert_equal(state.phish_guess, "")
+    next_phish(state)
+    assert_equal(state.phish_position, 1)
+    check_phish(state, "Maybe")
+    assert_equal(state.phish_guess, "")
+    wrong = check_phish(state, "Phishing")
+    assert_equal(wrong.state.phish_score, 1)
+    assert_equal("Not quite. This message is legitimate." in str(wrong.content), True)
+    assert_equal("classes='panel verdict incorrect'" in str(wrong.content), True)
+    assert_equal("Why it can be trusted" in str(wrong.content), True)
+    for message in MESSAGES[2:]:
+        next_phish(state)
+        if message.is_phish:
+            check_phish(state, "Phishing")
+        else:
+            check_phish(state, "Legitimate")
+    assert_equal("See my score" in str(phish_spotter(state).content), True)
+    summary = next_phish(state)
+    assert_equal(summary.state.phish_score, 5)
+    assert_equal("5 of 6 spotted correctly" in str(summary.content), True)
+    assert_equal("panel score-card score-high" in str(summary.content), True)
+    assert_equal("Red flags to remember" in str(summary.content), True)
+    assert_equal("Link('Phishing', 'phish_spotter', classes='active')" in str(summary.content), True)
+    assert_equal("Red flags to remember" in str(check_phish(state, "Phishing").content), True)
+    assert_equal(state.phish_score, 5)
+    restarted = restart_phish(state)
+    assert_equal([restarted.state.phish_position, restarted.state.phish_score, restarted.state.phish_guess],
+                 [0, 0, ""])
+    assert_equal("Message 1 of 6" in str(restarted.content), True)
+    # Breach steps: first steps always, extra sections for each ticked kind of data
+    breach = breach_steps(state)
+    assert_equal("Link('Tools', 'password_tools', classes='active')" in str(breach.content), True)
+    assert_equal("Start here" in str(breach.content), True)
+    assert_equal(str(breach.content).count("CheckBox("), 4)
+    assert_equal("If a password was exposed" in str(breach.content), False)
+    plan = breach_plan(state, True, False, False, True)
+    assert_equal(plan.state.exposures, ["password", "identity"])
+    assert_equal("If a password was exposed" in str(plan.content), True)
+    assert_equal("If an ID number was exposed" in str(plan.content), True)
+    assert_equal("If card or bank details were exposed" in str(plan.content), False)
+    assert_equal("Freeze your credit" in str(plan.content), True)
+    assert_equal("CheckBox('password', True" in str(plan.content), True)
+    assert_equal("CheckBox('email')" in str(plan.content), True)
+    assert_equal("classes='panel alert'" in str(plan.content), False)
+    empty = breach_plan(state, False, False, False, False)
+    assert_equal(empty.state.exposures, [])
+    assert_equal("Tick at least one" in str(empty.content), True)
+    assert_equal("classes='panel alert'" in str(empty.content), True)
+    assert_equal("If a password was exposed" in str(empty.content), False)
+    # Device setup: a picker, then the steps and official guides for the chosen device
+    devices = device_guide(state)
+    assert_equal("Link('Devices', 'device_guide', classes='active')" in str(devices.content), True)
+    assert_equal("SelectBox('platform', ['Choose a device'" in str(devices.content), True)
+    assert_equal("Choose a device to see" in str(devices.content), True)
+    for platform in PLATFORMS[1:]:
+        assert_equal(len(DEVICE_GUIDES[platform]), 5)
+        shown = device_steps(state, platform)
+        assert_equal(shown.state.platform, platform)
+        assert_equal("Your " + platform + " checklist" in str(shown.content), True)
+        assert_equal(str(shown.content).count("classes='settings-path'"), 5)
+        assert_equal(DEVICE_SOURCES[platform][0][1] in str(shown.content), True)
+    assert_equal("Menus vary" in str(device_steps(state, "Android").content), True)
+    assert_equal("Menus vary" in str(device_steps(state, "Mac").content), False)
+    assert_equal("FileVault" in str(device_steps(state, "Mac").content), True)
+    device_steps(state, "Linux")
+    assert_equal(state.platform, "Mac")
+    assert_equal(device_steps(state, "Choose a device").state.platform, "")
+    assert_equal(reset_progress(state).state, initial_state())
 
 
 # Run the tests on your computer and during deployment, but not in the

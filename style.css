@@ -62,6 +62,8 @@
   --icon-sun: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.5 1.5m11.2 11.2 1.5 1.5m0-14.2-1.5 1.5M6.4 17.6l-1.5 1.5'/%3E%3C/svg%3E");
   --icon-moon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20.5 15A8.7 8.7 0 0 1 9 3.5 8.8 8.8 0 1 0 20.5 15Z'/%3E%3C/svg%3E");
   --icon-monitor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='12.5' rx='2'/%3E%3Cpath d='M8.5 20.5h7M12 16.5v4'/%3E%3C/svg%3E");
+  --icon-mail: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='2'/%3E%3Cpath d='m3.5 6.5 8.5 6.5 8.5-6.5'/%3E%3C/svg%3E");
+  --icon-device: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='6.5' y='2.5' width='11' height='19' rx='2.5'/%3E%3Cpath d='M11 18.5h2'/%3E%3C/svg%3E");
 
   /* Page defaults; font-size scales gently with the viewport (16px to 22px) */
   font-size: clamp(16px, calc(0.5vw + 8.5px), 22px);
@@ -537,6 +539,18 @@ a[href^="http"]::after {
 
 .icon-shield {
   --tile-icon: var(--icon-shield);
+}
+
+.icon-alert {
+  --tile-icon: var(--icon-alert);
+}
+
+.icon-mail {
+  --tile-icon: var(--icon-mail);
+}
+
+.icon-device {
+  --tile-icon: var(--icon-device);
 }
 
 /* Highlighted checklist tip and the note that explains the highlight */
@@ -1393,5 +1407,194 @@ hr.divider {
     overflow: hidden;
     clip: rect(0 0 0 0);
     white-space: nowrap;
+  }
+}
+
+/* ==========================================================================
+   Home: three columns of tiles on wide screens
+   ========================================================================== */
+@media (min-width: 60rem) {
+  .tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ==========================================================================
+   Spot the Phish
+   ========================================================================== */
+/* Practice message styled like an email or text, with labelled header rows */
+.panel.message {
+  padding: 0;
+  overflow: hidden;
+  background: var(--surface);
+  border-color: var(--border-strong);
+}
+
+.message-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 1.5625rem;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.message-kind {
+  color: var(--accent);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.message-row {
+  display: flex;
+  gap: 1rem;
+  padding: 0.6rem 1.5625rem;
+  border-bottom: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+
+.message-label {
+  flex: none;
+  width: 4.5rem;
+  color: var(--muted);
+}
+
+.message-body {
+  max-width: 75ch;
+  padding: 1.25rem 1.5625rem;
+  color: var(--text-strong);
+}
+
+.message-body + .message-row {
+  border-top: 1px solid var(--border);
+  border-bottom: 0;
+}
+
+/* Links in practice messages are plain text, styled to look like links */
+.fake-link {
+  color: var(--accent);
+  font-family: var(--mono);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.phish-score {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* Right or wrong answer: coloured edge plus an icon, not colour alone */
+.panel.verdict {
+  position: relative;
+  padding-left: 3.5rem;
+  border-left-width: 4px;
+}
+
+.panel.verdict h2 {
+  margin: 0;
+}
+
+.panel.verdict::before {
+  content: "";
+  position: absolute;
+  top: 1.65rem;
+  left: 1.25rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  -webkit-mask: var(--verdict-icon) center / contain no-repeat;
+  mask: var(--verdict-icon) center / contain no-repeat;
+}
+
+.panel.verdict.correct {
+  --verdict-icon: var(--icon-check-circle);
+  background: var(--success-soft);
+  border-color: var(--success);
+}
+
+.panel.verdict.correct::before {
+  background: var(--success);
+}
+
+.panel.verdict.incorrect {
+  --verdict-icon: var(--icon-x-circle);
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+
+.panel.verdict.incorrect::before {
+  background: var(--danger);
+}
+
+/* Clues and red flags: a list with accent markers */
+ul.clues {
+  margin: 1rem 0 1.5rem;
+  padding-left: 1.25rem;
+}
+
+ul.clues li {
+  margin-bottom: 0.6rem;
+  padding-left: 0.35rem;
+}
+
+ul.clues li::marker {
+  color: var(--accent);
+}
+
+/* ==========================================================================
+   Breach steps and device setup
+   ========================================================================== */
+/* Link card under the Tools checks */
+.panel.next-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  border-left: 4px solid var(--accent);
+}
+
+.next-step-title {
+  color: var(--text-strong);
+  font-weight: 800;
+}
+
+.panel.next-step a {
+  font-weight: 700;
+}
+
+.exposure-card h2,
+.device-card label {
+  margin-top: 0;
+}
+
+.device-card select {
+  margin-bottom: 0.25rem;
+}
+
+ol.steps h3 {
+  color: var(--text-strong);
+}
+
+/* Where to find a setting, shown like a menu path */
+.settings-path {
+  display: inline-block;
+  margin: 0 0 0.5rem;
+  padding: 0.2rem 0.6rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--accent-hover);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 650px) {
+  .message-row {
+    flex-direction: column;
+    gap: 0;
   }
 }
