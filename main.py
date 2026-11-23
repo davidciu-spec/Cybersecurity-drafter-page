@@ -1,3 +1,4 @@
+import sys
 from dataclasses import dataclass
 from bakery import assert_equal
 from drafter import *
@@ -148,13 +149,15 @@ def index(state: State) -> Page:
 @route
 def password_tools(state: State) -> Page:
     """
-    Shows the password and email checking tools
+    Shows the email and password checking tools
     args:
         state (State) - the current session state
     returns:
-        Page - the page with the password checker and email checker
+        Page - the page with the email checker and password checker
     """
     return shell(state, "Password & email checks", [
+        Header("Check email exposure", 2),
+        *email_content(),
         Header("Check a password", 2),
         "Try a sample password. The length check is educational, not a security guarantee.",
         RawHTML('''<section class="panel private-tools">
@@ -165,9 +168,6 @@ def password_tools(state: State) -> Page:
         of its SHA-1 hash go to Have I Been Pwned. The field clears immediately.</p>
         <button type="button" data-private="password">Check password</button>
         <p id="password-result" class="private-result" role="status" aria-live="polite"></p></section>'''),
-        Link("Password data: Have I Been Pwned", "https://haveibeenpwned.com/Passwords"),
-        Header("Check email exposure", 2),
-        *email_content(),
     ])
 
 
@@ -189,7 +189,7 @@ def email_content() -> list:
     args:
         None
     returns:
-        list - the email input, consent checkbox, result area, and source links
+        list - the email input, consent checkbox, and result area
     """
     return [
         "This free check uses XposedOrNot, a separate database from Have I Been Pwned.",
@@ -204,8 +204,6 @@ def email_content() -> list:
         <p>Press Enter in the email box or choose Check email exposure.</p>
         <button type="button" data-private="email">Check email exposure</button>
         <p id="email-result" class="private-result" role="status" aria-live="polite"></p></section>'''),
-        Link("Breach data and service: XposedOrNot", "https://xposedornot.com"),
-        Link("Provider privacy policy", "https://xposedornot.com/privacy"),
     ]
 
 
@@ -504,7 +502,11 @@ def run_bakery_tests() -> None:
     assert_equal(initial_state().tips[0].completed, False)
 
 
-assert_equal(run_bakery_tests(), None)
+# Run the tests on your computer and during deployment, but not in the
+# visitor's browser ("emscripten"), where each assertion looks up main.py
+# over the network and slows down the first page load.
+if sys.platform != "emscripten":
+    assert_equal(run_bakery_tests(), None)
 
 set_website_title("Cyber Compass | CISC 106")
 set_website_style("none")

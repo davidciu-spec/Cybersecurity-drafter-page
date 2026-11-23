@@ -276,6 +276,52 @@ jobs:
           print(f"Bundled Drafter {version} and Bakery for the browser: {size_kb} KB")
           PY
 
+      # Speed up the first page load further. Normally the browser only learns
+      # which Pyodide files it needs one step at a time (pyodide.js, then the
+      # WebAssembly runtime, then the standard library, then each package).
+      # Preload hints in <head> let it download all of them in parallel while
+      # the page is still loading. The URLs must match exactly what Pyodide
+      # requests, so package file names come from its own lock file. If
+      # anything doesn't match, index.html is left untouched.
+      - name: Add preload hints
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import re
+          import urllib.request
+          from pathlib import Path
+
+          index = Path("_site/index.html")
+          html = index.read_text(encoding="utf-8")
+          head = '<meta charset="utf-8" />'
+          base = re.search(r'pyodideUrl: "([^"]+)"', html)
+          packages = re.search(r"systemPackages: (\[[^\]]*\]),", html)
+          if not (base and packages and head in html):
+              print("::warning::Drafter loader changed; preload hints were not added.")
+              raise SystemExit(0)
+
+          base = base.group(1).rstrip("/")
+          with urllib.request.urlopen(base + "/pyodide-lock.json", timeout=30) as response:
+              lock = json.load(response)["packages"]
+
+          files = ["pyodide-lock.json", "pyodide.asm.wasm", "python_stdlib.zip"]
+          files += [lock[name]["file_name"] for name in ["micropip", *json.loads(packages.group(1))] if name in lock]
+
+          origin = "/".join(base.split("/")[:3])
+          hints = [
+              f'<link rel="preconnect" href="{origin}" crossorigin>',
+              f'<link rel="modulepreload" href="{base}/pyodide.asm.mjs">',
+          ]
+          hints += [f'<link rel="preload" href="{base}/{name}" as="fetch" crossorigin>' for name in files]
+          if 'const url = "./drafter-runtime.zip";' in html:
+              hints.append('<link rel="preload" href="drafter-runtime.zip" as="fetch" crossorigin>')
+
+          index.write_text(html.replace(head, head + "\n    " + "\n    ".join(hints), 1), encoding="utf-8")
+          print("Added preload hints:", *hints, sep="\n  ")
+          PY
+
       - name: Run tests and output code coverage
         id: coverage
         shell: bash
