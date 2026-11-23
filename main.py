@@ -132,8 +132,8 @@ def index(state: State) -> Page:
     return shell(state, "Cyber Compass", [
         Div(
             tile("01", "Password & breach tools", "Check passwords and email exposure.", "password_tools"),
-            tile("02", "Safety checklist", "Turn advice into six everyday habits.", "checklist"),
-            tile("03", "Your security checkup", "Ten questions. A plan based on your answers.", "quiz"),
+            tile("02", "Cyber Safety checklist", "Turn advice into six everyday habits.", "checklist"),
+            tile("03", "Cyber Safety Quiz", "Ten questions. A plan based on your answers.", "quiz"),
             tile("04", "About & privacy", "Understand the project and where your data goes.", "about"),
             classes="tiles"),
     ])
