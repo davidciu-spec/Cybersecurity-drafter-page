@@ -463,7 +463,8 @@ def about(state: State) -> Page:
         "Cyber Compass helps students learn practical cybersecurity habits and respond to known exposure.",
         Header("Your data", 2),
         "Cyber Compass does not store any of your data. There are no accounts, databases, cookies or "
-        "analytics. Checklist and quiz progress only last while the page is open and clear when you reload.",
+        "analytics. Checklist and quiz progress only last while the page is open and clear when you reload. "
+        "The one thing remembered is the colour theme you pick, saved in your own browser.",
         "The site only contacts outside services when you press a check button on the Tools page:",
         Div(Header("Password check: Have I Been Pwned", 3),
             "Your password is hashed in your browser, and only the first five characters of that hash are "
@@ -555,6 +556,7 @@ def run_bakery_tests() -> None:
     assert_equal("site-footer" in str(about(state).content), True)
     assert_equal("Take the quiz" in str(results(state).content), True)
     assert_equal("Your data" in str(about(state).content), True)
+    assert_equal("colour theme you pick" in str(about(state).content), True)
     saved = save_checklist(state, True, False, True, False, True, False, "Devices")
     assert_equal([tip.completed for tip in saved.state.tips], [True, False, True, False, True, False])
     assert_equal(saved.state.focus, "Devices")
@@ -625,12 +627,13 @@ if sys.platform != "emscripten":
 
 set_website_title("Cyber Compass | CISC 106")
 set_website_style("none")
-# The site is already dark, so ask the Dark Reader extension not to restyle it
-# (it rewrites colours and breaks the dropdown arrow's position).
+# The site has its own light and dark themes, so ask the Dark Reader extension
+# not to restyle it (it rewrites colours and breaks the dropdown arrow's position).
 add_website_header('<meta name="darkreader-lock">')
 set_website_framed(False)
 hide_debug_information()
 add_website_css_file("style.css")
+add_website_js_file("theme.js")
 add_website_js_file("private-tools.js")
 
 start_server(initial_state(), port=8001, host="127.0.0.1", open_browser=True)

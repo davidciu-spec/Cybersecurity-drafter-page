@@ -6,19 +6,22 @@
    Design tokens
    ========================================================================== */
 :root {
+  /* Colour: Harbor, the default dark theme. The other five themes below
+     redefine these same tokens, so the rest of the file never names a colour. */
   color-scheme: dark;
-
-  /* Colour */
   --bg: #0b1220;
   --surface: #142238;
   --surface-2: #1c304a;
   --border: #304157;
   --border-strong: #8195ae;
   --text: #e5edf7;
+  --text-strong: #ffffff;
   --muted: #9fb0c6;
   --accent: #7de0cc;
   --accent-hover: #b4f1e4;
+  --on-accent: #0b1220;
   --warn: #ffc879;
+  --warn-text: #ffe3b8;
   --danger: #ff8a8a;
   --success: #7ee2a8;
 
@@ -28,11 +31,16 @@
   --danger-soft: rgba(255, 138, 138, 0.1);
   --success-soft: rgba(126, 226, 168, 0.1);
   --grid-line: rgba(125, 224, 204, 0.05);
+  --glow: rgba(125, 224, 204, 0.14);
+  --priority-bg: #1c2f3f;
+  --priority-ring: rgba(255, 200, 121, 0.14);
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237de0cc' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
   /* Shape and depth */
   --radius: 1rem;
   --radius-sm: 0.5rem;
   --shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+  --popover-shadow: 0 18px 44px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
 
   /* Type: system fonts only */
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -50,12 +58,187 @@
   --icon-x-circle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='m9 9 6 6m0-6-6 6'/%3E%3C/svg%3E");
   --icon-spinner: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M21 12a9 9 0 1 1-6.2-8.55'/%3E%3C/svg%3E");
   --icon-external: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5'/%3E%3C/svg%3E");
+  --icon-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --icon-sun: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.5 1.5m11.2 11.2 1.5 1.5m0-14.2-1.5 1.5M6.4 17.6l-1.5 1.5'/%3E%3C/svg%3E");
+  --icon-moon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20.5 15A8.7 8.7 0 0 1 9 3.5 8.8 8.8 0 1 0 20.5 15Z'/%3E%3C/svg%3E");
+  --icon-monitor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='12.5' rx='2'/%3E%3Cpath d='M8.5 20.5h7M12 16.5v4'/%3E%3C/svg%3E");
 
   /* Page defaults; font-size scales gently with the viewport (16px to 22px) */
   font-size: clamp(16px, calc(0.5vw + 8.5px), 22px);
   font-family: var(--font);
   background: var(--bg);
   color: var(--text);
+}
+
+/* ==========================================================================
+   Themes: three light, three dark. theme.js sets data-theme on <html>.
+   Harbor is the :root default above.
+   ========================================================================== */
+:root[data-theme="nebula"] {
+  color-scheme: dark;
+  --bg: #100d1c;
+  --surface: #1c1733;
+  --surface-2: #261f44;
+  --border: #3a3260;
+  --border-strong: #8d84b8;
+  --text: #ece8fb;
+  --text-strong: #ffffff;
+  --muted: #aba4cc;
+  --accent: #b9a2ff;
+  --accent-hover: #d8cbff;
+  --on-accent: #140f26;
+  --warn: #ffc879;
+  --warn-text: #ffe3b8;
+  --danger: #ff8fa3;
+  --success: #7ee2a8;
+  --accent-soft: rgba(185, 162, 255, 0.14);
+  --warn-soft: rgba(255, 200, 121, 0.1);
+  --danger-soft: rgba(255, 143, 163, 0.1);
+  --success-soft: rgba(126, 226, 168, 0.1);
+  --grid-line: rgba(185, 162, 255, 0.055);
+  --glow: rgba(185, 162, 255, 0.2);
+  --priority-bg: #2a2240;
+  --priority-ring: rgba(255, 200, 121, 0.14);
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b9a2ff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
+  --popover-shadow: 0 18px 44px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="ember"] {
+  color-scheme: dark;
+  --bg: #14100d;
+  --surface: #211a15;
+  --surface-2: #2c231d;
+  --border: #44372d;
+  --border-strong: #a08f80;
+  --text: #f3ebe4;
+  --text-strong: #fff8f2;
+  --muted: #c2b1a2;
+  --accent: #ffaa6b;
+  --accent-hover: #ffc89e;
+  --on-accent: #1a120c;
+  --warn: #ffd75e;
+  --warn-text: #fff0bf;
+  --danger: #ff8a8a;
+  --success: #8ee0a0;
+  --accent-soft: rgba(255, 170, 107, 0.13);
+  --warn-soft: rgba(255, 215, 94, 0.1);
+  --danger-soft: rgba(255, 138, 138, 0.1);
+  --success-soft: rgba(142, 224, 160, 0.1);
+  --grid-line: rgba(255, 170, 107, 0.05);
+  --glow: rgba(255, 170, 107, 0.17);
+  --priority-bg: #2e2617;
+  --priority-ring: rgba(255, 215, 94, 0.14);
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffaa6b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --shadow: 0 14px 30px rgba(0, 0, 0, 0.42);
+  --popover-shadow: 0 18px 44px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="daylight"] {
+  color-scheme: light;
+  --bg: #f4f7fb;
+  --surface: #ffffff;
+  --surface-2: #eef3f8;
+  --border: #d9e2ec;
+  --border-strong: #7a8ba1;
+  --text: #16243a;
+  --text-strong: #0a1424;
+  --muted: #52637a;
+  --accent: #0f766e;
+  --accent-hover: #0b5d57;
+  --on-accent: #ffffff;
+  --warn: #b45309;
+  --warn-text: #7c3a06;
+  --danger: #c02626;
+  --success: #15803d;
+  --accent-soft: rgba(15, 118, 110, 0.1);
+  --warn-soft: rgba(180, 83, 9, 0.08);
+  --danger-soft: rgba(192, 38, 38, 0.07);
+  --success-soft: rgba(21, 128, 61, 0.08);
+  --grid-line: rgba(15, 118, 110, 0.06);
+  --glow: rgba(15, 118, 110, 0.13);
+  --priority-bg: #fff8ec;
+  --priority-ring: rgba(180, 83, 9, 0.14);
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230f766e' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --shadow: 0 14px 30px rgba(22, 36, 58, 0.12);
+  --popover-shadow: 0 18px 44px rgba(22, 36, 58, 0.16), 0 2px 6px rgba(22, 36, 58, 0.08);
+}
+
+:root[data-theme="sand"] {
+  color-scheme: light;
+  --bg: #f8f3ea;
+  --surface: #fffdf8;
+  --surface-2: #f4ede0;
+  --border: #e6dccb;
+  --border-strong: #938269;
+  --text: #2e2519;
+  --text-strong: #1f180f;
+  --muted: #6b5f4e;
+  --accent: #b4501e;
+  --accent-hover: #8f3a12;
+  --on-accent: #ffffff;
+  --warn: #955a06;
+  --warn-text: #6b3f05;
+  --danger: #b91c1c;
+  --success: #3f7d20;
+  --accent-soft: rgba(180, 80, 30, 0.1);
+  --warn-soft: rgba(161, 98, 7, 0.08);
+  --danger-soft: rgba(185, 28, 28, 0.07);
+  --success-soft: rgba(63, 125, 32, 0.08);
+  --grid-line: rgba(180, 80, 30, 0.06);
+  --glow: rgba(180, 80, 30, 0.12);
+  --priority-bg: #fdf2dc;
+  --priority-ring: rgba(161, 98, 7, 0.14);
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b4501e' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --shadow: 0 14px 30px rgba(46, 37, 25, 0.12);
+  --popover-shadow: 0 18px 44px rgba(46, 37, 25, 0.16), 0 2px 6px rgba(46, 37, 25, 0.08);
+}
+
+:root[data-theme="lilac"] {
+  color-scheme: light;
+  --bg: #f6f4fc;
+  --surface: #ffffff;
+  --surface-2: #f0ecfa;
+  --border: #e0daf2;
+  --border-strong: #8f86ad;
+  --text: #221b3a;
+  --text-strong: #160f2b;
+  --muted: #5f5878;
+  --accent: #6046cd;
+  --accent-hover: #4a32ad;
+  --on-accent: #ffffff;
+  --warn: #b45309;
+  --warn-text: #7c3a06;
+  --danger: #be123c;
+  --success: #15803d;
+  --accent-soft: rgba(96, 70, 205, 0.1);
+  --warn-soft: rgba(180, 83, 9, 0.08);
+  --danger-soft: rgba(190, 18, 60, 0.07);
+  --success-soft: rgba(21, 128, 61, 0.08);
+  --grid-line: rgba(96, 70, 205, 0.06);
+  --glow: rgba(96, 70, 205, 0.14);
+  --priority-bg: #fff7ea;
+  --priority-ring: rgba(180, 83, 9, 0.14);
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236046cd' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --shadow: 0 14px 30px rgba(34, 27, 58, 0.12);
+  --popover-shadow: 0 18px 44px rgba(34, 27, 58, 0.16), 0 2px 6px rgba(34, 27, 58, 0.08);
+}
+
+/* Fade colours for a moment while switching themes */
+:root.theme-fade,
+:root.theme-fade *,
+:root.theme-fade *::before,
+:root.theme-fade *::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root.theme-fade,
+  :root.theme-fade *,
+  :root.theme-fade *::before,
+  :root.theme-fade *::after {
+    transition: none !important;
+  }
 }
 
 /* ==========================================================================
@@ -184,7 +367,7 @@ a[href^="http"]::after {
   padding: 0.25rem 0;
   border-radius: var(--radius-sm);
   background: none;
-  color: #fff;
+  color: var(--text-strong);
   font-size: 1.35rem;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -231,9 +414,9 @@ a[href^="http"]::after {
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 1.25rem;
-  /* Teal glow, faint grid, then the base surface colour */
+  /* Accent glow, faint grid, then the base surface colour */
   background:
-    radial-gradient(60% 90% at 88% 0%, rgba(125, 224, 204, 0.14), transparent 70%),
+    radial-gradient(60% 90% at 88% 0%, var(--glow), transparent 70%),
     linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0 / 32px 32px,
     linear-gradient(90deg, var(--grid-line) 1px, transparent 1px) 0 0 / 32px 32px,
     var(--surface);
@@ -358,9 +541,9 @@ a[href^="http"]::after {
 
 /* Highlighted checklist tip and the note that explains the highlight */
 .panel.priority {
-  background: #1c2f3f;
+  background: var(--priority-bg);
   border: 2px solid var(--warn);
-  box-shadow: 0 0 0 4px rgba(255, 200, 121, 0.14);
+  box-shadow: 0 0 0 4px var(--priority-ring);
 }
 
 .panel.priority h2 {
@@ -369,7 +552,7 @@ a[href^="http"]::after {
 
 .panel.priority-note {
   border-color: var(--warn);
-  color: #ffe3b8;
+  color: var(--warn-text);
 }
 
 /* ==========================================================================
@@ -379,7 +562,7 @@ button {
   margin: 0.875rem 1rem 0.5rem 0;
   padding: 0.8125rem 1.25rem;
   background: var(--accent);
-  color: var(--bg);
+  color: var(--on-accent);
   border: 1px solid transparent;
   border-radius: 8px;
   font-weight: 700;
@@ -422,7 +605,7 @@ button.danger {
 
 button.danger:hover {
   background: var(--danger);
-  color: var(--bg);
+  color: var(--on-accent);
 }
 
 /* ==========================================================================
@@ -437,7 +620,7 @@ select {
   max-width: 100%;
   padding: 0.75rem;
   background: var(--bg);
-  color: #fff;
+  color: var(--text-strong);
   border: 1px solid var(--border-strong);
   border-radius: 6px;
   font: inherit;
@@ -467,7 +650,7 @@ select {
 select {
   padding-right: 2.75rem;
   background-color: var(--bg);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237de0cc' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: var(--select-arrow);
   background-position: calc(100% - 0.85rem) 50%;
   background-repeat: no-repeat;
   background-size: 1.1rem;
@@ -738,7 +921,7 @@ ol.steps li::before {
   width: 2rem;
   height: 2rem;
   background: var(--accent);
-  color: var(--bg);
+  color: var(--on-accent);
   border-radius: 50%;
   font-weight: 800;
   line-height: 1;
@@ -913,4 +1096,302 @@ hr.divider {
 
 .focus-note {
   color: var(--muted);
+}
+
+/* ==========================================================================
+   Theme picker (built by theme.js, placed at the end of the navigation)
+   ========================================================================== */
+.navigation {
+  position: relative;
+}
+
+.theme-menu {
+  position: relative;
+  margin-left: 0.5rem;
+}
+
+/* The global button styles are for actions; reset them for the menu. */
+.theme-menu button {
+  margin: 0;
+  font: inherit;
+  text-align: left;
+}
+
+.theme-menu button:active {
+  transform: none;
+}
+
+/* Trigger: a pill with a colour dot, the theme name and a chevron */
+.theme-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.7rem 0.4rem 0.45rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.3;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.theme-trigger:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+
+.theme-trigger[aria-expanded="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-hover);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Half surface, half accent, so the dot previews the current theme */
+.theme-trigger-swatch {
+  flex: none;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--swatch-surface) 0 50%, var(--swatch-accent) 50% 100%);
+  box-shadow: inset 0 0 0 1px rgba(128, 128, 128, 0.45);
+}
+
+.theme-chevron {
+  flex: none;
+  width: 0.95rem;
+  height: 0.95rem;
+  background: currentColor;
+  opacity: 0.75;
+  -webkit-mask: var(--icon-chevron) center / contain no-repeat;
+  mask: var(--icon-chevron) center / contain no-repeat;
+  transition: transform 0.2s ease;
+}
+
+.theme-trigger[aria-expanded="true"] .theme-chevron {
+  transform: rotate(180deg);
+}
+
+/* Popover */
+.theme-popover {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  width: min(19rem, calc(100vw - 2rem));
+  padding: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: var(--popover-shadow);
+  transform-origin: top right;
+  animation: theme-popover-in 0.16s ease-out;
+}
+
+.theme-popover[hidden] {
+  display: none;
+}
+
+@keyframes theme-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+}
+
+.theme-popover-title {
+  margin: 0.35rem 0.6rem 0.4rem;
+  color: var(--text-strong);
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.theme-group + .theme-group {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Group heading with a sun or moon icon */
+.theme-group-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.35rem 0.6rem 0.3rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.theme-group-label::before {
+  content: "";
+  width: 0.85rem;
+  height: 0.85rem;
+  background: currentColor;
+  -webkit-mask: var(--group-icon) center / contain no-repeat;
+  mask: var(--group-icon) center / contain no-repeat;
+}
+
+.theme-group-light {
+  --group-icon: var(--icon-sun);
+}
+
+.theme-group-dark {
+  --group-icon: var(--icon-moon);
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  background: transparent;
+  color: var(--text);
+  border: 0;
+  border-radius: 0.65rem;
+  font-weight: 600;
+  line-height: 1.25;
+  transition: background 0.15s ease;
+}
+
+.theme-option:hover,
+.theme-option:focus-visible {
+  background: var(--surface-2);
+}
+
+.theme-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.theme-option[aria-checked="true"] {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+}
+
+.theme-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.theme-name {
+  font-size: 0.92rem;
+}
+
+.theme-note {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.theme-check {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  background: var(--accent);
+  visibility: hidden;
+  -webkit-mask: var(--icon-check) center / contain no-repeat;
+  mask: var(--icon-check) center / contain no-repeat;
+}
+
+.theme-option[aria-checked="true"] .theme-check {
+  visibility: visible;
+}
+
+/* Mini preview of a theme: page colour, a card, and two accent lines */
+.theme-swatch {
+  position: relative;
+  flex: none;
+  width: 2.6rem;
+  height: 1.85rem;
+  overflow: hidden;
+  background: var(--swatch-page);
+  border-radius: 0.5rem;
+  box-shadow: inset 0 0 0 1px rgba(128, 128, 128, 0.4);
+}
+
+.theme-swatch::before {
+  content: "";
+  position: absolute;
+  inset: 0.28rem;
+  border-radius: 0.3rem;
+  background: var(--swatch-surface);
+  box-shadow: 0 0 0 1px rgba(128, 128, 128, 0.18);
+}
+
+.theme-swatch::after {
+  content: "";
+  position: absolute;
+  left: 0.52rem;
+  bottom: 0.52rem;
+  width: 0.8rem;
+  height: 0.24rem;
+  border-radius: 999px;
+  background: var(--swatch-accent);
+  box-shadow: 0.55rem -0.42rem 0 0 var(--swatch-accent);
+}
+
+.theme-separator {
+  margin: 0.35rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.theme-device-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.6rem;
+  height: 1.85rem;
+  background: var(--bg);
+  border-radius: 0.5rem;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.theme-device-icon::before {
+  content: "";
+  width: 1.1rem;
+  height: 1.1rem;
+  background: currentColor;
+  -webkit-mask: var(--icon-monitor) center / contain no-repeat;
+  mask: var(--icon-monitor) center / contain no-repeat;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-popover {
+    animation: none;
+  }
+
+  .theme-chevron {
+    transition: none;
+  }
+}
+
+/* Small screens: the picker sits beside the brand, showing just its dot */
+@media (max-width: 650px) {
+  .theme-menu {
+    position: absolute;
+    top: 0;
+    right: 0;
+    margin: 0;
+  }
+
+  .theme-trigger {
+    padding-right: 0.55rem;
+  }
+
+  .theme-trigger-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
 }
