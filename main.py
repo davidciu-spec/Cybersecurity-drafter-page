@@ -35,7 +35,7 @@ class State:
         quiz_score: int - the total score a user gets on the quiz
         quiz_attempts: int - the number of completed quizzes
         recommendations: list[str] - the advice based on the user's quiz answers
-        focus: str - the area the user wants to focus on
+        focus: str - the area the user wants to focus on ("" when none is chosen)
         priority_tips: list[int] - positions of the checklist tips that match weak quiz answers
         highlight: bool - whether the checklist currently highlights the priority tips
     """
@@ -75,6 +75,7 @@ CHOICES = ("Choose an answer", "Yes", "Sometimes", "No")
 QUESTION_TIPS = (0, 0, 0, 1, 2, 3, 4, None, None, 5)
 # Positions of the checklist tips that matter most for each focus area
 FOCUS_TIPS = {"Accounts": [0, 1, 5], "Devices": [3, 4], "Awareness": [2]}
+FOCUS_CHOICES = ("Choose a focus", "Accounts", "Devices", "Awareness")
 
 
 def initial_state() -> State:
@@ -92,7 +93,7 @@ def initial_state() -> State:
         SafetyTip("Software updates", QUESTIONS[5][1], False),
         SafetyTip("Reliable backups", QUESTIONS[6][1], False),
         SafetyTip("Account recovery", QUESTIONS[9][1], False),
-    ], 0, 0, [], "Accounts", [], False)
+    ], 0, 0, [], "", [], False)
 
 
 def shell(state: State, title: str, content: list, lead: str = "",
@@ -293,15 +294,20 @@ def checklist_page(state: State) -> Page:
     elif state.highlight:
         intro.append(Div("Your quiz answers don't point to any unfinished checklist habits. "
                          "Keep it up.", classes="panel priority-note"))
-    intro.append(Div("★ marks the habits that matter most for your current focus: " + state.focus +
-                     ". Change your focus below and save to update the stars.", classes="focus-note"))
-    focus_field = SelectBox("focus", ["Accounts", "Devices", "Awareness"], state.focus)
+    if state.focus:
+        focus_note = ("★ marks the habits that matter most for your current focus: " + state.focus +
+                      ". Change your focus and save to update the stars.")
+    else:
+        focus_note = "Choose a focus and save to star the habits that matter most for it."
+    focus_field = SelectBox("focus", list(FOCUS_CHOICES), state.focus or FOCUS_CHOICES[0])
+    focus_card = Div(Label("My current focus", focus_field), focus_field,
+                     Div(focus_note, classes="focus-note"), classes="panel focus-card")
     progress = Div(Div(str(completed) + " of 6 habits completed", classes="progress-label"),
                    ProgressBar(completed, max=6, classes="progress"),
                    Div("Progress lasts for this open session.", classes="progress-note"),
                    classes="panel progress-card")
     return shell(state, "Your safety checklist", [
-        progress, *intro, *content, Label("My current focus", focus_field), focus_field,
+        progress, focus_card, *intro, *content,
         Button("Save my progress", "save_checklist"),
     ], "Six everyday habits. Tick them off as you go.", "Checklist")
 
@@ -319,15 +325,17 @@ def save_checklist(state: State, tip0: bool, tip1: bool, tip2: bool,
         tip3 (bool) - whether the software updates tip has been completed
         tip4 (bool) - whether the reliable backups tip has been completed
         tip5 (bool) - whether the account recovery tip has been completed
-        focus (str) - the selected focus, saved if it is Accounts, Devices, or Awareness
+        focus (str) - the selected focus: Accounts, Devices, or Awareness, or "Choose a focus" to clear it
     returns:
         Page - the checklist page with the updated progress
     """
     choices = [tip0, tip1, tip2, tip3, tip4, tip5]
     for position, tip in enumerate(state.tips):
         tip.completed = choices[position]
-    if focus in ["Accounts", "Devices", "Awareness"]:
+    if focus in FOCUS_CHOICES[1:]:
         state.focus = focus
+    elif focus == FOCUS_CHOICES[0]:
+        state.focus = ""
     return checklist_page(state)
 
 
@@ -508,7 +516,10 @@ def run_bakery_tests() -> None:
     assert_equal(state.quiz_score, 0)
     assert_equal(state.quiz_attempts, 0)
     assert_equal(state.recommendations, [])
-    assert_equal(state.focus, "Accounts")
+    assert_equal(state.focus, "")
+    assert_equal("★" in str(checklist(state).content), False)
+    assert_equal("Choose a focus and save" in str(checklist(state).content), True)
+    assert_equal("SelectBox('focus', ['Choose a focus'" in str(checklist(state).content), True)
     assert_equal(state.tips[0].completed, False)
     assert_equal("Example title" in str(shell(state, "Example title", []).content), True)
     assert_equal("Open Example" in str(tile("key", "01", "Example", "Description", "quiz")), True)
@@ -554,8 +565,11 @@ def run_bakery_tests() -> None:
     assert_equal("★ Reliable backups" in str(saved.content), True)
     assert_equal("★ Unique passwords" in str(saved.content), False)
     assert_equal("current focus: Devices" in str(saved.content), True)
-    assert_equal("★ Unique passwords" in str(checklist(initial_state()).content), True)
-    assert_equal("★ Account recovery" in str(checklist(initial_state()).content), True)
+    accounts = save_checklist(initial_state(), False, False, False, False, False, False, "Accounts")
+    assert_equal("★ Unique passwords" in str(accounts.content), True)
+    assert_equal("★ Account recovery" in str(accounts.content), True)
+    assert_equal(save_checklist(accounts.state, False, False, False, False, False, False,
+                                "Choose a focus").state.focus, "")
     save_checklist(state, False, False, False, False, False, False, "Invalid")
     assert_equal(state.focus, "Devices")
     assert_equal([tip.completed for tip in state.tips], [False] * 6)

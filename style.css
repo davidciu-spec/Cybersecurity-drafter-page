@@ -899,8 +899,11 @@ ul.sources a {
   }
 }
 
-/* Note explaining the focus stars on checklist tips */
+/* Focus picker below the progress counter, with the note explaining the stars */
+.focus-card select {
+  margin-bottom: 0.75rem;
+}
+
 .focus-note {
-  margin: 1.125rem 0 0;
   color: var(--muted);
 }
