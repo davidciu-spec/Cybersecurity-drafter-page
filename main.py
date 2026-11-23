@@ -768,7 +768,8 @@ def email_content() -> list:
         I own this address or have permission to check it. I agree to send the full
         address to XposedOrNot for this search.</label>
         <p>XposedOrNot receives your email and network information. Its privacy
-        practices apply. We do not save the address or results to a database.</p>
+        practices apply. We do not save the address or results to a database.
+        The free service allows about 25 checks an hour from each network.</p>
         <p>Press Enter in the email box or choose Check email exposure.</p>
         <button type="button" data-private="email">Check email exposure</button>
         <p id="email-result" class="private-result" role="status" aria-live="polite"></p></section>'''),

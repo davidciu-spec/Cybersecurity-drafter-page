@@ -87,13 +87,26 @@
       } else {
         const endpoint = 'https://api.xposedornot.com/v1/check-email/' + encodeURIComponent(secret.trim());
         secret = '';
-        const response = await fetch(endpoint, {
-          cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer',
-          signal: AbortSignal.timeout(15000)
-        });
-        if (response.status === 429) {
+        // The free API allows 2 checks a second, 25 an hour and 100 a day per IP address.
+        // Over the limit, its Cloudflare front end answers 429 with an HTML page that has
+        // no CORS headers, so the browser cannot read it and fetch throws a TypeError.
+        // Retrying soon cannot help with an hourly cap, so explain it instead.
+        let response = null;
+        try {
+          response = await fetch(endpoint, {
+            cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer',
+            signal: AbortSignal.timeout(15000)
+          });
+        } catch (error) {
+          // Timeouts and an offline browser are not rate limits; report those as errors.
+          if (error.name !== 'TypeError' || !navigator.onLine) throw error;
+        }
+        if (!response || response.status === 429) {
           output.dataset.state = 'warning';
-          output.textContent = 'The provider rate limit was reached. Wait before trying again; no result was obtained.';
+          output.textContent = 'XposedOrNot did not answer, so no result was obtained. This usually means ' +
+            'its free limit of 25 checks an hour (100 a day) for your network has been reached. ' +
+            'Try again in an hour. A privacy extension or network filter that blocks ' +
+            'api.xposedornot.com can also cause this.';
           return;
         }
         // A clean address comes back as {"Error": "Not found"}, with status 200 or 404.
