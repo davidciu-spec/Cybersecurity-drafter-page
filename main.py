@@ -307,7 +307,7 @@ def checklist_page(state: State) -> Page:
                    Div("Progress lasts for this open session.", classes="progress-note"),
                    classes="panel progress-card")
     return shell(state, "Your safety checklist", [
-        progress, focus_card, *intro, *content,
+        progress, HorizontalRule(classes="divider"), focus_card, *intro, *content,
         Button("Save my progress", "save_checklist"),
     ], "Six everyday habits. Tick them off as you go.", "Checklist")
 
@@ -520,6 +520,7 @@ def run_bakery_tests() -> None:
     assert_equal("★" in str(checklist(state).content), False)
     assert_equal("Choose a focus and save" in str(checklist(state).content), True)
     assert_equal("SelectBox('focus', ['Choose a focus'" in str(checklist(state).content), True)
+    assert_equal("HorizontalRule(classes='divider')" in str(checklist(state).content), True)
     assert_equal(state.tips[0].completed, False)
     assert_equal("Example title" in str(shell(state, "Example title", []).content), True)
     assert_equal("Open Example" in str(tile("key", "01", "Example", "Description", "quiz")), True)

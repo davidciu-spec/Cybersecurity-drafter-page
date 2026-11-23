@@ -899,6 +899,13 @@ ul.sources a {
   }
 }
 
+/* Line separating the progress counter from the focus picker */
+hr.divider {
+  margin: 1.5rem 0;
+  border: 0;
+  border-top: 1px solid var(--border-strong);
+}
+
 /* Focus picker below the progress counter, with the note explaining the stars */
 .focus-card select {
   margin-bottom: 0.75rem;
