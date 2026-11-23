@@ -1,3 +1,4 @@
+import random
 import sys
 from dataclasses import dataclass
 from bakery import assert_equal
@@ -38,9 +39,10 @@ class State:
         focus: str - the area the user wants to focus on ("" when none is chosen)
         priority_tips: list[int] - positions of the checklist tips that match weak quiz answers
         highlight: bool - whether the checklist currently highlights the priority tips
-        phish_position: int - the position of the Spot the Phish message being shown
+        phish_position: int - how many Spot the Phish messages have been moved past in this round
         phish_score: int - the number of Spot the Phish messages answered correctly
         phish_guess: str - the answer for the current message ("" when not answered yet)
+        phish_order: list[int] - the positions in MESSAGES, shuffled into the order they are shown
         exposures: list[str] - the kinds of data the user said a breach exposed
         platform: str - the device chosen on the device setup page ("" when none is chosen)
     """
@@ -54,6 +56,7 @@ class State:
     phish_position: int
     phish_score: int
     phish_guess: str
+    phish_order: list[int]
     exposures: list[str]
     platform: str
 
@@ -186,6 +189,255 @@ MESSAGES = (
          "It uses a personal email address instead of the school address professors normally use.",
          "Urgency and secrecy are pressure tactics. Check with the professor through the school "
          "directory or in person."]),
+    SampleMessage(
+        "Email", "OneFile Drive <no-reply@onefile-docs-share.com>",
+        "Dana shared \"Payroll Adjustments 2026.pdf\" with you",
+        "Dana has shared a document with you. This file will be available for 48 hours. Sign in "
+        "with your school email and password to view it.",
+        "onefile-docs-share.com/view-document", True,
+        ["You weren't expecting a file, and the title is chosen to make you curious about money.",
+         "The domain isn't the file-sharing service's real website, even though the name looks "
+         "close.",
+         "Asking for your school password to open a document is how fake sign-in pages steal "
+         "accounts. Ask the sender through another channel if the file is real."]),
+    SampleMessage(
+        "Email", "Campus Library <library@yourschool.edu>",
+        "Reminder: 2 books due this Friday",
+        "Two items on your library account are due this Friday. You can renew them from My "
+        "Account on the library website or at the front desk. If you've already returned them, "
+        "you don't need to do anything.",
+        "", False,
+        ["It comes from the school's real domain and matches something you actually did, "
+         "borrowing books.",
+         "It asks for nothing sensitive: no password, no payment and no attachment.",
+         "It sends you to the library website or the front desk, places you already know, "
+         "instead of a link."]),
+    SampleMessage(
+        "Text message", "+1 (415) 555-0193", "",
+        "MetroPass Tolls: you have an unpaid toll balance of $4.35. Pay today to avoid a $50 "
+        "late fee and suspension of your driving licence.",
+        "metropass-tollpay.info/pay", True,
+        ["Unpaid toll texts are one of the most common scams. They're sent to huge numbers of "
+         "people, drivers or not.",
+         "The threat is far out of proportion to a $4.35 charge. That's meant to scare you into "
+         "paying quickly.",
+         "The link isn't the toll agency's real website. Check any balance by typing the "
+         "official address yourself."]),
+    SampleMessage(
+        "Text message", "PineCrest Pharmacy", "",
+        "PineCrest Pharmacy: your prescription is ready for pickup at our Main Street store. "
+        "Bring photo ID. Reply STOP to stop these alerts.",
+        "", False,
+        ["You'd expect this if you recently asked for a prescription to be filled.",
+         "It has no link and doesn't ask for personal details, payment or a reply with "
+         "information.",
+         "If you're unsure, call the store using the number on your prescription label or "
+         "their official website."]),
+    SampleMessage(
+        "Email", "Campus Careers Team <campus.careers.hiring@outlook.com>",
+        "Remote assistant role: $500 a week, 5 hours",
+        "Congratulations, your profile was selected for a flexible remote assistant job. We'll "
+        "mail you a cheque to buy office equipment. Deposit it, keep $500 for your first week, "
+        "and send the rest to our equipment vendor by gift card or wire transfer.",
+        "", True,
+        ["The pay is far too high for very little work, and you never applied for the job.",
+         "Real school career offices use the school's domain, not a free personal email account.",
+         "Depositing a cheque and sending part of it back is a fake-cheque scam. The cheque "
+         "bounces later and you lose the money you sent."]),
+    SampleMessage(
+        "Email", "Northleaf Bank <statements@northleafbank.com>",
+        "Your October statement is ready",
+        "Your October statement is now available. To view it, open the Northleaf Bank app or "
+        "type northleafbank.com into your browser and sign in. We will never ask for your "
+        "password, PIN or sign-in codes by email.",
+        "", False,
+        ["It's a routine notice you'd expect each month, with no deadline or threat.",
+         "It has no link. It tells you to open the app or type the address yourself, which is "
+         "the safe way to sign in.",
+         "It asks for nothing and reminds you the bank will never ask for your password or "
+         "codes."]),
+    SampleMessage(
+        "Email", "Account Services <accounts@yourschool.edu.password-renew.com>",
+        "Your password expires today",
+        "Your school password expires at midnight. To keep access to email and the student "
+        "portal, confirm your current password using the secure link below.",
+        "yourschool.edu.password-renew.com/confirm", True,
+        ["The real website is the last part before the first slash: password-renew.com. "
+         "'yourschool.edu' at the start is only there to fool you.",
+         "No real IT team asks you to confirm your current password through an email link.",
+         "If you think your password is expiring, sign in through the student portal the way "
+         "you normally do."]),
+    SampleMessage(
+        "Text message", "+1 (614) 555-0127", "",
+        "Hi Mum, I dropped my phone and this is my new number. I can't get into my banking app. "
+        "Can you send $350 to my friend's account for rent? I'll pay you back tomorrow.",
+        "", True,
+        ["A family member writing from a new number and asking for money straight away is a "
+         "well-known scam.",
+         "The excuse explains why they can't call or use their own account, so you can't check.",
+         "Call the family member on the number you already have before sending anything."]),
+    SampleMessage(
+        "Email", "Revenue Refunds <refunds@revenue-services-online.com>",
+        "You are owed a tax refund of $428.60",
+        "After a review of your account we found you are owed a refund of $428.60. To receive "
+        "it, enter your bank card number, expiry date and security code on our refund page "
+        "within 3 days.",
+        "revenue-services-online.com/claim-refund", True,
+        ["Tax agencies don't email you about refunds and ask for card details.",
+         "A refund never needs your card's security code. That's only used to make payments.",
+         "Check for a real refund by typing the tax agency's official address yourself or "
+         "calling them."]),
+    SampleMessage(
+        "Email", "Accounts Payable <billing@quickledger-invoices.biz>",
+        "OVERDUE: Invoice #88231 – final notice",
+        "Please find the attached overdue invoice for services provided. Payment is now 30 days "
+        "late. Open the attachment Invoice_88231.zip and enable editing to view the full "
+        "amount.",
+        "", True,
+        ["You don't recognise the company, and it doesn't say what the services were.",
+         "Zip files and requests to 'enable editing' are common ways to install malware.",
+         "Don't open unexpected attachments. If you think you might owe money, contact the "
+         "company using details you find yourself."]),
+    SampleMessage(
+        "Text message", "+1 (205) 555-0166", "",
+        "ShopMart: Congratulations! You've been selected to receive a $1,000 gift card. Claim "
+        "yours in the next 2 hours before it goes to the next winner.",
+        "shopmart-rewards.win/claim", True,
+        ["You can't win a prize you never entered.",
+         "The two-hour limit is there to stop you thinking it through.",
+         "The '.win' link isn't the store's real website. These pages ask for personal "
+         "details or a 'shipping fee'."]),
+    SampleMessage(
+        "Email", "SecureGuard Billing <billing@secureguard-renewals.com>",
+        "Your subscription renewed: $399.99 charged",
+        "Thank you for renewing SecureGuard Total Protection for 3 years. $399.99 has been "
+        "charged to your account. If you didn't approve this, call our cancellation line at "
+        "1-800-555-0177 within 24 hours for a refund.",
+        "", True,
+        ["A large charge for something you don't remember buying is meant to make you panic.",
+         "Instead of a link, it pushes you to call. The 'support' agent will ask for remote "
+         "access to your computer or your bank details.",
+         "Check your bank or card statement directly. Only call numbers you find on the "
+         "official website."]),
+    SampleMessage(
+        "Email", "PhotoGram Support <support@photogram-appeals.help>",
+        "Your account will be disabled: copyright violation",
+        "We received a copyright complaint about one of your posts. Your account will be "
+        "permanently disabled in 24 hours unless you submit an appeal and confirm your login "
+        "details.",
+        "photogram-appeals.help/appeal", True,
+        ["The '.help' domain isn't the social media app's real website.",
+         "The threat of losing your account in 24 hours is meant to rush you.",
+         "Real warnings appear inside the app's own settings or notifications. Check there "
+         "instead of signing in through a link."]),
+    SampleMessage(
+        "Email", "Financial Aid Office <finaid.office@yourschool-grants.org>",
+        "You qualify for a $2,500 student grant",
+        "Good news! You have been pre-approved for a $2,500 student grant. To release the "
+        "funds, pay a one-time $49 processing fee by card on the link below.",
+        "yourschool-grants.org/release-funds", True,
+        ["Real grants and scholarships don't charge a fee to release money.",
+         "The address isn't the school's real domain. It just includes the school's name.",
+         "Contact the financial aid office through the student portal or in person to check."]),
+    SampleMessage(
+        "Email", "Oakview Property Management <rent@oakview-properties.co>",
+        "Important: new bank details for rent payments",
+        "Please note our bank account has changed. From this month, send your rent to the new "
+        "account below and not the old one. Payments to the old account will be returned. "
+        "Please don't call the office, as we are moving phone systems.",
+        "", True,
+        ["Messages that change where you send money are a favourite trick, because the money "
+         "is very hard to get back.",
+         "The domain ends in '.co' instead of the address your landlord normally uses.",
+         "Telling you not to call is a big warning sign. Always confirm new payment details by "
+         "phone or in person."]),
+    SampleMessage(
+        "Email", "StreamBox <no-reply@streambox.com>",
+        "Reset your StreamBox password",
+        "We received a request to reset your password. If this was you, use the link below "
+        "within 1 hour. If you didn't ask for this, you can ignore this email and your password "
+        "won't change.",
+        "streambox.com/account/reset", False,
+        ["This is safe if you just clicked 'forgot password' yourself. You expected it.",
+         "The link goes to the company's own website, and it tells you that ignoring it is fine.",
+         "If you didn't ask for a reset, don't click. Someone may have typed your email by "
+         "mistake, or may be trying to get in."]),
+    SampleMessage(
+        "Text message", "Bright Smile Dental", "",
+        "Bright Smile Dental: reminder of your appointment on Tuesday at 3:00 p.m. Reply C to "
+        "confirm or call the office to reschedule.",
+        "", False,
+        ["You'd expect this if you have an appointment booked.",
+         "It has no link and doesn't ask for any personal or payment details.",
+         "Replying 'C' only confirms the time. If anything seems off, call the office on the "
+         "number you already have."]),
+    SampleMessage(
+        "Email", "Larkspur Outfitters <orders@larkspuroutfitters.com>",
+        "Your order #40219 has shipped",
+        "Good news! Your order of 1 rain jacket has shipped and should arrive Thursday. You can "
+        "track it from Your Orders on our website.",
+        "larkspuroutfitters.com/orders", False,
+        ["It matches an order you actually placed, with the right item.",
+         "It comes from the store's real domain and the link goes to the same website.",
+         "It doesn't ask for payment or a password. You can also open the website yourself to "
+         "check."]),
+    SampleMessage(
+        "Email", "Office of the Registrar <registrar@yourschool.edu>",
+        "Spring registration opens Monday",
+        "Registration for spring classes opens Monday at 8 a.m. Check your registration time "
+        "and any holds on your account in the student portal before then.",
+        "", False,
+        ["It comes from the school's real domain and arrives at the time of year you'd expect.",
+         "It asks for nothing and has no link or attachment.",
+         "It points you to the student portal, which you already know how to reach."]),
+    SampleMessage(
+        "Text message", "First Harbor Bank", "",
+        "First Harbor Bank: did you try to make a $62.10 purchase at Corner Grocery? Reply YES "
+        "or NO. We will never ask for your PIN, password or codes by text.",
+        "", False,
+        ["It only asks for a simple YES or NO. There's no link and no request for details.",
+         "Banks do send fraud checks like this when a purchase looks unusual.",
+         "If you're unsure, call the number on the back of your card instead of replying."]),
+    SampleMessage(
+        "Email", "StreamBox <security@streambox.com>",
+        "New sign-in on a Windows computer",
+        "We noticed a new sign-in to your StreamBox account on a Windows computer. If this was "
+        "you, you don't need to do anything. If not, open the StreamBox app and change your "
+        "password from Settings.",
+        "", False,
+        ["It comes from the company's real domain and doesn't ask you to click anything.",
+         "It tells you to use the app you already have to make changes.",
+         "If you didn't sign in, follow its advice through the app: change your password and "
+         "turn on MFA."]),
+    SampleMessage(
+        "Email", "Maya Chen <mchen@yourschool.edu>",
+        "Notes from today's group meeting",
+        "Hi all, I've put the notes from today's meeting in our group folder on the course "
+        "page. Can everyone add their part of the outline before Thursday? Thanks!",
+        "", False,
+        ["It's from a classmate's school address about a project you're working on.",
+         "It asks for nothing unusual: no money, password or secrecy.",
+         "It points to the course page you already use instead of an unknown link or "
+         "attachment."]),
+    SampleMessage(
+        "Text message", "SwiftShip", "",
+        "SwiftShip: your parcel will be delivered today between 2 p.m. and 5 p.m. Track it in "
+        "the SwiftShip app.",
+        "", False,
+        ["It matches a parcel you're expecting and asks for nothing.",
+         "There's no link, no fee and no deadline, unlike the fake delivery message.",
+         "It tells you to use the official app, which is the safe way to check."]),
+    SampleMessage(
+        "Email", "IT Service Desk <servicedesk@yourschool.edu>",
+        "Reminder: turn on multifactor authentication by December 15",
+        "To protect your account, multifactor authentication will be required from December "
+        "15. Set it up from the Security page in the student portal. IT will never ask for your "
+        "password or sign-in codes.",
+        "", False,
+        ["It comes from the school's real domain and gives a reasonable deadline.",
+         "It sends you to the student portal instead of a link.",
+         "It reminds you that IT will never ask for your password or codes, which is true of "
+         "real IT teams."]),
 )
 PHISH_CHOICES = ("Phishing", "Legitimate")
 PHISH_RED_FLAGS = (
@@ -338,7 +590,31 @@ def initial_state() -> State:
         SafetyTip("Software updates", QUESTIONS[5][1], False),
         SafetyTip("Reliable backups", QUESTIONS[6][1], False),
         SafetyTip("Account recovery", QUESTIONS[9][1], False),
-    ], 0, 0, [], "", [], False, 0, 0, "", [], "")
+    ], 0, 0, [], "", [], False, 0, 0, "", shuffled_order(), [], "")
+
+
+def shuffled_order() -> list[int]:
+    """
+    Creates a random order for the Spot the Phish messages
+    args:
+        None
+    returns:
+        list[int] - every position in MESSAGES exactly once, in a random order
+    """
+    order = list(range(len(MESSAGES)))
+    random.shuffle(order)
+    return order
+
+
+def current_message(state: State) -> SampleMessage:
+    """
+    Finds the Spot the Phish message the user is currently on
+    args:
+        state (State) - the current session state with the message order and position
+    returns:
+        SampleMessage - the message at the current position of the shuffled order
+    """
+    return MESSAGES[state.phish_order[state.phish_position]]
 
 
 def shell(state: State, title: str, content: list, lead: str = "",
@@ -414,7 +690,7 @@ def index(state: State) -> Page:
                  "breach_steps"),
             tile("checklist", "03", "Cyber Safety checklist", "Turn advice into six everyday habits.", "checklist"),
             tile("quiz", "04", "Cyber Safety Quiz", "Ten questions. A plan based on your answers.", "quiz"),
-            tile("mail", "05", "Spot the Phish", "Six practice messages. Can you tell which are fake?",
+            tile("mail", "05", "Spot the Phish", "Thirty practice messages. Can you tell which are fake?",
                  "phish_spotter"),
             tile("device", "06", "Device setup", "Lock down your laptop or phone, step by step.", "device_guide"),
             classes="tiles"),
@@ -719,7 +995,7 @@ def message_card(message: SampleMessage, position: int) -> Div:
     Creates a card that looks like an email or text message
     args:
         message (SampleMessage) - the practice message to show
-        position (int) - the position of the message in MESSAGES
+        position (int) - how many messages came before this one in the current round
     returns:
         Div - the card with the sender, subject, body, and any link shown as plain text
     """
@@ -746,13 +1022,19 @@ def phish_spotter(state: State) -> Page:
     returns:
         Page - the message with answer buttons, the feedback for an answer, or the summary
     """
+    if sorted(state.phish_order) != list(range(len(MESSAGES))):
+        state.phish_order = shuffled_order()
+        state.phish_position = 0
+        state.phish_score = 0
+        state.phish_guess = ""
     if state.phish_position >= len(MESSAGES):
         return phish_summary(state)
-    message = MESSAGES[state.phish_position]
+    message = current_message(state)
     content = []
     if state.phish_position == 0 and not state.phish_guess:
-        content.append("Each message is made up but based on real scams. Decide whether it's phishing "
-                       "or legitimate. Links are shown as text only, so nothing here can be clicked.")
+        content.append("Each message is made up but based on real scams, and they appear in a random "
+                       "order each time. Decide whether it's phishing or legitimate. Links are shown "
+                       "as text only, so nothing here can be clicked.")
     else:
         answered = state.phish_position
         if state.phish_guess:
@@ -785,7 +1067,7 @@ def phish_spotter(state: State) -> Page:
         else:
             content.append(Button("See my score", "next_phish"))
     return shell(state, "Spot the Phish", content,
-                 "Six messages. Which ones would you trust?", "Phishing")
+                 "Thirty messages in a random order. Which ones would you trust?", "Phishing")
 
 
 @route
@@ -800,7 +1082,7 @@ def check_phish(state: State, guess: str) -> Page:
     """
     if guess in PHISH_CHOICES and state.phish_position < len(MESSAGES) and not state.phish_guess:
         state.phish_guess = guess
-        if (guess == PHISH_CHOICES[0]) == MESSAGES[state.phish_position].is_phish:
+        if (guess == PHISH_CHOICES[0]) == current_message(state).is_phish:
             state.phish_score += 1
     return phish_spotter(state)
 
@@ -823,12 +1105,13 @@ def next_phish(state: State) -> Page:
 @route
 def restart_phish(state: State) -> Page:
     """
-    Starts the Spot the Phish activity again from the first message
+    Starts the Spot the Phish activity again with the messages in a new random order
     args:
         state (State) - the current session state to reset
     returns:
         Page - the first practice message
     """
+    state.phish_order = shuffled_order()
     state.phish_position = 0
     state.phish_score = 0
     state.phish_guess = ""
@@ -1168,7 +1451,11 @@ def run_bakery_tests() -> None:
     assert_equal("don't point to any" in str(action_plan(state).content), True)
     score_quiz(state, *(["No"] * 10))
     reset = reset_progress(state)
-    assert_equal(reset.state, initial_state())
+    # The Spot the Phish order is random, so compare everything else against a fresh start
+    expected = initial_state()
+    expected.phish_order = reset.state.phish_order
+    assert_equal(reset.state, expected)
+    assert_equal(sorted(reset.state.phish_order), list(range(len(MESSAGES))))
     assert_equal(reset.state is state, False)
     assert_equal("Progress reset" in str(reset.content), True)
     assert_equal("site-footer" in str(reset.content), True)
@@ -1195,12 +1482,28 @@ def run_new_page_tests() -> None:
     assert_equal(score_band(5, 6), "score-high")
     assert_equal(score_band(2, 6), "score-low")
     # Spot the Phish: messages, answers, scoring, and moving on
-    assert_equal(len(MESSAGES), 6)
+    assert_equal(len(MESSAGES), 30)
     for message in MESSAGES:
         assert_equal(len(message.clues), 3)
+    # Every round shows each message exactly once, in a random order
+    assert_equal(sorted(state.phish_order), list(range(30)))
+    assert_equal(sorted(shuffled_order()), list(range(30)))
+    shuffled = initial_state()
+    shuffled.phish_order = [2] + [n for n in range(30) if n != 2]
+    assert_equal(current_message(shuffled), MESSAGES[2])
+    assert_equal("Message 1 of 30" in str(phish_spotter(shuffled).content), True)
+    assert_equal(MESSAGES[2].sender in str(phish_spotter(shuffled).content), True)
+    check_phish(shuffled, "Phishing")
+    assert_equal(shuffled.phish_score, 1)
+    broken = initial_state()
+    broken.phish_order = [0, 1]
+    phish_spotter(broken)
+    assert_equal(sorted(broken.phish_order), list(range(30)))
+    # Use the original order so the walkthrough below is predictable
+    state.phish_order = list(range(30))
     first = phish_spotter(state)
     assert_equal("Link('Phishing', 'phish_spotter', classes='active')" in str(first.content), True)
-    assert_equal("Message 1 of 6" in str(first.content), True)
+    assert_equal("Message 1 of 30" in str(first.content), True)
     assert_equal("swiftship-redelivery.net" in str(first.content), True)
     assert_equal("Link('swiftship" in str(first.content), False)
     assert_equal("check_phish" in str(first.content), True)
@@ -1237,17 +1540,18 @@ def run_new_page_tests() -> None:
             check_phish(state, "Legitimate")
     assert_equal("See my score" in str(phish_spotter(state).content), True)
     summary = next_phish(state)
-    assert_equal(summary.state.phish_score, 5)
-    assert_equal("5 of 6 spotted correctly" in str(summary.content), True)
+    assert_equal(summary.state.phish_score, 29)
+    assert_equal("29 of 30 spotted correctly" in str(summary.content), True)
     assert_equal("panel score-card score-high" in str(summary.content), True)
     assert_equal("Red flags to remember" in str(summary.content), True)
     assert_equal("Link('Phishing', 'phish_spotter', classes='active')" in str(summary.content), True)
     assert_equal("Red flags to remember" in str(check_phish(state, "Phishing").content), True)
-    assert_equal(state.phish_score, 5)
+    assert_equal(state.phish_score, 29)
     restarted = restart_phish(state)
     assert_equal([restarted.state.phish_position, restarted.state.phish_score, restarted.state.phish_guess],
                  [0, 0, ""])
-    assert_equal("Message 1 of 6" in str(restarted.content), True)
+    assert_equal("Message 1 of 30" in str(restarted.content), True)
+    assert_equal(sorted(restarted.state.phish_order), list(range(30)))
     # Breach steps: first steps always, extra sections for each ticked kind of data
     breach = breach_steps(state)
     assert_equal("Link('Tools', 'password_tools', classes='active')" in str(breach.content), True)
@@ -1286,7 +1590,10 @@ def run_new_page_tests() -> None:
     device_steps(state, "Linux")
     assert_equal(state.platform, "Mac")
     assert_equal(device_steps(state, "Choose a device").state.platform, "")
-    assert_equal(reset_progress(state).state, initial_state())
+    reset = reset_progress(state).state
+    expected = initial_state()
+    expected.phish_order = reset.phish_order
+    assert_equal(reset, expected)
 
 
 # Run the tests on your computer and during deployment, but not in the
