@@ -73,6 +73,8 @@ QUESTIONS = (
 CHOICES = ("Choose an answer", "Yes", "Sometimes", "No")
 # Position of the checklist tip each quiz question relates to (None = no matching tip)
 QUESTION_TIPS = (0, 0, 0, 1, 2, 3, 4, None, None, 5)
+# Positions of the checklist tips that matter most for each focus area
+FOCUS_TIPS = {"Accounts": [0, 1, 5], "Devices": [3, 4], "Awareness": [2]}
 
 
 def initial_state() -> State:
@@ -271,13 +273,16 @@ def checklist_page(state: State) -> Page:
             completed += 1
         field = CheckBox("tip" + str(position), tip.completed)
         classes = "panel tip"
-        title = Header(tip.title, 2)
+        name = tip.title
+        if position in FOCUS_TIPS.get(state.focus, []):
+            name = "★ " + name
+        title = Header(name, 2)
         if tip.completed:
             classes = "panel tip done"
         elif state.highlight and position in state.priority_tips:
             classes = "panel tip priority"
             flagged.append(tip.title)
-            title = Header(tip.title + " · Recommended from your quiz", 2)
+            title = Header(name + " · Recommended from your quiz", 2)
         content.append(Div(title, tip.advice,
                            Div(field, Label("I have done this", field), classes="tip-check"),
                            classes=classes))
@@ -288,6 +293,8 @@ def checklist_page(state: State) -> Page:
     elif state.highlight:
         intro.append(Div("Your quiz answers don't point to any unfinished checklist habits. "
                          "Keep it up.", classes="panel priority-note"))
+    intro.append(Div("★ marks the habits that matter most for your current focus: " + state.focus +
+                     ". Change your focus below and save to update the stars.", classes="focus-note"))
     focus_field = SelectBox("focus", ["Accounts", "Devices", "Awareness"], state.focus)
     progress = Div(Div(str(completed) + " of 6 habits completed", classes="progress-label"),
                    ProgressBar(completed, max=6, classes="progress"),
@@ -542,6 +549,13 @@ def run_bakery_tests() -> None:
     assert_equal("3 of 6" in str(saved.content), True)
     assert_equal(str(saved.content).count("classes='panel tip done'"), 3)
     assert_equal(str(saved.content).count("classes='panel tip'"), 3)
+    assert_equal(str(saved.content).count("★ "), 3)
+    assert_equal("★ Software updates" in str(saved.content), True)
+    assert_equal("★ Reliable backups" in str(saved.content), True)
+    assert_equal("★ Unique passwords" in str(saved.content), False)
+    assert_equal("current focus: Devices" in str(saved.content), True)
+    assert_equal("★ Unique passwords" in str(checklist(initial_state()).content), True)
+    assert_equal("★ Account recovery" in str(checklist(initial_state()).content), True)
     save_checklist(state, False, False, False, False, False, False, "Invalid")
     assert_equal(state.focus, "Devices")
     assert_equal([tip.completed for tip in state.tips], [False] * 6)
@@ -572,6 +586,7 @@ def run_bakery_tests() -> None:
     state.tips[0].completed = False
     score_quiz(state, "Yes", "Yes", "Yes", "No", "Yes", "Yes", "Yes", "No", "Yes", "Yes")
     assert_equal(state.priority_tips, [1])
+    assert_equal("★ Multifactor authentication · Recommended" in str(action_plan(state).content), False)
     assert_equal("Multifactor authentication · Recommended" in str(action_plan(state).content), True)
     assert_equal("Unique passwords · Recommended" in str(action_plan(state).content), False)
     assert_equal(save_checklist(state, False, False, False, False, False, False, "Devices").state.highlight, True)

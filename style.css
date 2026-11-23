@@ -898,3 +898,9 @@ ul.sources a {
     grid-template-columns: 1fr;
   }
 }
+
+/* Note explaining the focus stars on checklist tips */
+.focus-note {
+  margin: 1.125rem 0 0;
+  color: var(--muted);
+}
