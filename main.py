@@ -88,7 +88,7 @@ def initial_state() -> State:
 
 def shell(state: State, title: str, content: list) -> Page:
     """
-    Creates a page with navigation links, a title, and a footer
+    Creates a page with navigation links and a title
     args:
         state (State) - the current session state
         title (str) - the heading shown on the page
@@ -97,13 +97,11 @@ def shell(state: State, title: str, content: list) -> Page:
         Page - the page with the shared layout
     """
     return Page(state, [
-        Div(Link("CYBER COMPASS", "index"), Link("Tools", "password_tools"),
+        Div(Link("Home", "index"), Link("Tools", "password_tools"),
             Link("Checklist", "checklist"), Link("Quiz", "quiz"),
             Link("About", "about"), classes="navigation"),
         Div("PERSONAL CYBERSECURITY / CISC 106", classes="eyebrow"),
         Header(title), *content,
-        Div("Learn. Check. Build better habits.  ",
-            Link("Sources & privacy", "about"), classes="footer"),
     ])
 
 
@@ -131,9 +129,7 @@ def index(state: State) -> Page:
     returns:
         Page - the home page with the four cards
     """
-    return shell(state, "A safer digital life starts here.", [
-        Div("Small actions. Stronger protection.", classes="intro"),
-        "Explore your habits, check for known exposure, and build a practical plan.",
+    return shell(state, "Cyber Compass", [
         Div(
             tile("01", "Password & breach tools", "Check passwords and email exposure.", "password_tools"),
             tile("02", "Safety checklist", "Turn advice into six everyday habits.", "checklist"),
@@ -410,7 +406,7 @@ def run_bakery_tests() -> None:
     assert_equal("Example title" in str(shell(state, "Example title", []).content), True)
     assert_equal("Open Example" in str(tile("01", "Example", "Description", "quiz")), True)
     assert_equal("private-consent" in str(email_content()), True)
-    assert_equal("A safer digital life" in str(index(state).content), True)
+    assert_equal("Cyber Compass" in str(index(state).content), True)
     assert_equal("private-password" in str(password_tools(state).content), True)
     assert_equal("private-email" in str(password_tools(state).content), True)
     assert_equal("private-email" in str(email_tools(state).content), True)

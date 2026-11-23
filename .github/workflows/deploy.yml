@@ -205,6 +205,34 @@ jobs:
             echo "No Drafter assertion output was detected during compilation." > _site/dashboard/tests.txt
           fi
 
+      # Speed up the first page load. In the browser, Drafter installs itself
+      # from PyPI with all of its dependencies, which pulls in matplotlib and
+      # its NumPy/fonttools/etc. stack (tens of MB). This site never plots
+      # anything, and Drafter only imports matplotlib lazily for
+      # MatPlotLibPlot, so register a mock package before Drafter is
+      # installed and skip that download entirely.
+      - name: Skip unused browser packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          index = Path("_site/index.html")
+          html = index.read_text(encoding="utf-8")
+          marker = "await window.Drafter.mountDrafterRemote(url);"
+          mocks = ["matplotlib"]
+          patch = "".join(
+              f'window.micropip.add_mock_package("{name}", "1.0.0");\n        '
+              for name in mocks
+          )
+          if marker in html:
+              index.write_text(html.replace(marker, patch + marker, 1), encoding="utf-8")
+              print("Mocked browser packages:", ", ".join(mocks))
+          else:
+              print("::warning::Drafter loader changed; unused packages were not skipped.")
+          PY
+
       - name: Run tests and output code coverage
         id: coverage
         shell: bash
