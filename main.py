@@ -6,10 +6,10 @@ from drafter import *
 set_site_information(
     author = "David Ciupei",
     description = "Cybersecurity",
-    sources = "LLM use for the template, CSS, JS. Used APIs (documented below). ",
+    sources = "LLM use for the template, CSS, JS, speeding up rendering on open, and reworking the UI. Used APIs (documented below). ",
     planning = "",
     links = ["https://t3.chat/share/4jor4lmt84","https://t3.chat/share/tfl3i1erc","https://t3.chat/share/td1jvtzswf","https://chatgpt.com/s/cx_6af6414a64648191b9246e67444c59a1","https://xposedornot.com/api_doc","https://chatgpt.com/s/cx_6af66e1f8aec81918e07b21fb18fc6b9","https://www.cisa.gov/secure-our-world","https://www.fbi.gov/how-we-can-help-you/online-safety/stay-safe-online-simple-tips-for-adults",
-            "https://docs.google.com/document/d/1o9OBWE1hz9fVb5NnTaveS_2FcbgzdIhejqWtBFjfDXM/edit?usp=sharing - CISC Design", "https://docs.google.com/document/d/1xgStWdQnBjMmXmBvU1YjNi4mfz141Jlq5g5pE_L4B5k/edit?usp=sharing - CISC 106 Selection"]
+            "https://docs.google.com/document/d/1o9OBWE1hz9fVb5NnTaveS_2FcbgzdIhejqWtBFjfDXM/edit?usp=sharing - CISC Design", "https://docs.google.com/document/d/1xgStWdQnBjMmXmBvU1YjNi4mfz141Jlq5g5pE_L4B5k/edit?usp=sharing - CISC 106 Selection","https://docs.google.com/document/d/1phvccYCsgnMsVA6A5drGUkAhZ2-wECBYbReHJv_oJho/edit?usp=sharing - Overflow conversations that did not have links"]
     )
 
 @dataclass
