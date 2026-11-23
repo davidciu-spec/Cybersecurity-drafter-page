@@ -6,6 +6,9 @@
    or error) so CSS can style the message; it is always a fixed keyword. */
 (() => {
   'use strict';
+  // Drafter can add this script again when it redraws; register the listeners once.
+  if (window.cyberCompassPrivateTools) return;
+  window.cyberCompassPrivateTools = true;
   // Prevent the surrounding Drafter form from submitting either secret.
   // Enter dispatches only the button in the textbox's own tool panel.
   window.addEventListener('keydown', event => {
@@ -37,8 +40,17 @@
       output.textContent = 'Please confirm permission and consent before checking.';
       return;
     }
+    if (!window.isSecureContext || !window.crypto || !crypto.subtle ||
+        typeof AbortSignal === 'undefined' || typeof AbortSignal.timeout !== 'function') {
+      output.dataset.state = 'error';
+      output.textContent = 'This browser cannot run the check securely here. Nothing was sent.';
+      return;
+    }
     let secret = input.value;
-    input.value = '';
+    // The password is cleared straight away. The email stays until the lookup
+    // succeeds, so a rate limit or network error doesn't force retyping it.
+    if (mode === 'password') input.value = '';
+    let guidance = '';
     button.disabled = true;
     output.dataset.state = 'checking';
     output.textContent = 'Checking…';
@@ -46,7 +58,7 @@
       if (mode === 'password') {
         const length = Array.from(secret).length;
         const pattern = /^(.)\1+$/.test(secret) || /^(password|123456|qwerty|letmein)/i.test(secret);
-        const guidance = length < 16 || pattern
+        guidance = length < 16 || pattern
           ? 'Local check: short or predictable. Prefer a long, unique, randomly generated password.'
           : 'Local check: length is a useful start. Randomness and uniqueness still matter.';
         const bytes = new TextEncoder().encode(secret);
@@ -84,15 +96,19 @@
           output.textContent = 'The provider rate limit was reached. Wait before trying again; no result was obtained.';
           return;
         }
-        const data = await response.json();
-        if (response.status === 404 && (data.Error === 'Not found' || data.error === 'Not found')) {
+        // A clean address comes back as {"Error": "Not found"}, with status 200 or 404.
+        const data = await response.json().catch(() => null);
+        if (data && (response.ok || response.status === 404) &&
+            (data.Error === 'Not found' || data.error === 'Not found')) {
+          input.value = '';
           output.dataset.state = 'clear';
           output.textContent = 'No match reported by XposedOrNot. Its coverage is incomplete; this is not proof of safety.';
           return;
         }
-        if (!response.ok || !Array.isArray(data.breaches)) throw new Error('service');
+        if (!response.ok || !data || !Array.isArray(data.breaches)) throw new Error('service');
         const names = data.breaches.flat();
         if (!names.every(name => typeof name === 'string')) throw new Error('format');
+        input.value = '';
         output.dataset.state = names.length ? 'exposed' : 'clear';
         output.textContent = names.length
           ? 'XposedOrNot reports exposure in: ' + names.join(', ') +
@@ -101,7 +117,8 @@
       }
     } catch (_) {
       output.dataset.state = 'error';
-      output.textContent += '\nThe breach lookup could not finish. No conclusion about exposure can be drawn. Try later.';
+      output.textContent = (guidance ? guidance + '\n' : '') +
+        'The breach lookup could not finish. No conclusion about exposure can be drawn. Try later.';
     } finally {
       secret = '';
       button.disabled = false;
@@ -109,8 +126,10 @@
   }, true);
   // Clear visible private fields when navigating away or unloading the document.
   const clear = () => document.querySelectorAll('#private-password,#private-email').forEach(e => {e.value = '';});
+  // Theme menu buttons stay on the page, so they don't clear the fields.
   document.addEventListener('click', event => {
-    if (event.target.closest('a') || (event.target.closest('button') && !event.target.closest('[data-private]'))) clear();
+    if (event.target.closest('[data-private], .theme-menu')) return;
+    if (event.target.closest('a, button')) clear();
   }, true);
   window.addEventListener('pagehide', clear);
 })();

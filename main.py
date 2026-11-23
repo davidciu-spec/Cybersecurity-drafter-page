@@ -606,6 +606,21 @@ def shuffled_order() -> list[int]:
     return order
 
 
+def ensure_phish_order(state: State) -> None:
+    """
+    Starts a fresh Spot the Phish round if the saved message order is not a full shuffle
+    args:
+        state (State) - the current session state to check and repair
+    returns:
+        None
+    """
+    if sorted(state.phish_order) != list(range(len(MESSAGES))):
+        state.phish_order = shuffled_order()
+        state.phish_position = 0
+        state.phish_score = 0
+        state.phish_guess = ""
+
+
 def current_message(state: State) -> SampleMessage:
     """
     Finds the Spot the Phish message the user is currently on
@@ -690,7 +705,7 @@ def index(state: State) -> Page:
                  "breach_steps"),
             tile("checklist", "03", "Cyber Safety checklist", "Turn advice into six everyday habits.", "checklist"),
             tile("quiz", "04", "Cyber Safety Quiz", "Ten questions. A plan based on your answers.", "quiz"),
-            tile("mail", "05", "Spot the Phish", "Thirty practice messages. Can you tell which are fake?",
+            tile("mail", "05", "Spot the Phish", str(len(MESSAGES)) + " practice messages. Can you tell which are fake?",
                  "phish_spotter"),
             tile("device", "06", "Device setup", "Lock down your laptop or phone, step by step.", "device_guide"),
             classes="tiles"),
@@ -792,9 +807,9 @@ def action_plan(state: State) -> Page:
     args:
         state (State) - the current session state with the quiz results
     returns:
-        Page - the checklist page with the matching tips highlighted
+        Page - the checklist page with the matching tips highlighted (plain before any quiz)
     """
-    state.highlight = True
+    state.highlight = state.quiz_attempts > 0
     return checklist_page(state)
 
 
@@ -842,8 +857,9 @@ def checklist_page(state: State) -> Page:
     focus_field = SelectBox("focus", list(FOCUS_CHOICES), state.focus or FOCUS_CHOICES[0])
     focus_card = Div(Label("My current focus", focus_field), focus_field,
                      Div(focus_note, classes="focus-note"), classes="panel focus-card")
-    progress = Div(Div(str(completed) + " of 6 habits completed", classes="progress-label"),
-                   ProgressBar(completed, max=6, classes="progress"),
+    progress = Div(Div(str(completed) + " of " + str(len(state.tips)) + " habits completed",
+                       classes="progress-label"),
+                   ProgressBar(completed, max=len(state.tips), classes="progress"),
                    Div("Progress lasts for this open session.", classes="progress-note"),
                    classes="panel progress-card")
     return shell(state, "Your safety checklist", [
@@ -1022,11 +1038,7 @@ def phish_spotter(state: State) -> Page:
     returns:
         Page - the message with answer buttons, the feedback for an answer, or the summary
     """
-    if sorted(state.phish_order) != list(range(len(MESSAGES))):
-        state.phish_order = shuffled_order()
-        state.phish_position = 0
-        state.phish_score = 0
-        state.phish_guess = ""
+    ensure_phish_order(state)
     if state.phish_position >= len(MESSAGES):
         return phish_summary(state)
     message = current_message(state)
@@ -1067,7 +1079,7 @@ def phish_spotter(state: State) -> Page:
         else:
             content.append(Button("See my score", "next_phish"))
     return shell(state, "Spot the Phish", content,
-                 "Thirty messages in a random order. Which ones would you trust?", "Phishing")
+                 str(len(MESSAGES)) + " messages in a random order. Which ones would you trust?", "Phishing")
 
 
 @route
@@ -1080,6 +1092,7 @@ def check_phish(state: State, guess: str) -> Page:
     returns:
         Page - the current message with feedback, or the unchanged page if the answer is invalid
     """
+    ensure_phish_order(state)
     if guess in PHISH_CHOICES and state.phish_position < len(MESSAGES) and not state.phish_guess:
         state.phish_guess = guess
         if (guess == PHISH_CHOICES[0]) == current_message(state).is_phish:
@@ -1118,6 +1131,22 @@ def restart_phish(state: State) -> Page:
     return phish_spotter(state)
 
 
+@route
+def complete_phishing(state: State) -> Page:
+    """
+    Ticks off the phishing awareness habit after a Spot the Phish round
+    args:
+        state (State) - the current session state to update
+    returns:
+        Page - the checklist with phishing awareness completed
+    """
+    for tip in state.tips:
+        if tip.title == "Phishing awareness":
+            tip.completed = True
+    state.highlight = False
+    return checklist_page(state)
+
+
 def phish_summary(state: State) -> Page:
     """
     Creates the final Spot the Phish page with the score and the red flags to remember
@@ -1150,7 +1179,7 @@ def phish_summary(state: State) -> Page:
         BulletedList([Link("CISA: Recognize and report phishing",
                            "https://www.cisa.gov/secure-our-world/recognize-and-report-phishing")],
                      classes="sources"),
-        Button("Tick off phishing awareness", "checklist"),
+        Button("Tick off phishing awareness", "complete_phishing"),
         Button("Try again", "restart_phish", classes="secondary"),
     ], "Phishing works by rushing you. Slowing down is the best defence.", "Phishing")
 
@@ -1402,7 +1431,10 @@ def run_bakery_tests() -> None:
     assert_equal("3 of 6" in str(saved.content), True)
     assert_equal(str(saved.content).count("classes='panel tip done'"), 3)
     assert_equal(str(saved.content).count("classes='panel tip'"), 3)
-    assert_equal(str(saved.content).count("★ "), 3)
+    assert_equal(str(saved.content).count("★ Software updates"), 1)
+    assert_equal(str(saved.content).count("★ Reliable backups"), 1)
+    # Exactly those two tips are starred for the "Devices" focus
+    assert_equal(sum(str(saved.content).count("★ " + tip.title) for tip in saved.state.tips), 2)
     assert_equal("★ Software updates" in str(saved.content), True)
     assert_equal("★ Reliable backups" in str(saved.content), True)
     assert_equal("★ Unique passwords" in str(saved.content), False)
@@ -1552,6 +1584,19 @@ def run_new_page_tests() -> None:
                  [0, 0, ""])
     assert_equal("Message 1 of 30" in str(restarted.content), True)
     assert_equal(sorted(restarted.state.phish_order), list(range(30)))
+    # A broken order is repaired before an answer is scored, instead of crashing
+    restarted.state.phish_order = []
+    assert_equal(check_phish(restarted.state, "Phishing").state.phish_position, 0)
+    assert_equal(sorted(restarted.state.phish_order), list(range(30)))
+    # The summary button really ticks off the phishing habit
+    ticked = complete_phishing(initial_state())
+    assert_equal([tip.completed for tip in ticked.state.tips], [False, False, True, False, False, False])
+    assert_equal("1 of 6 habits completed" in str(ticked.content), True)
+    # The action plan does not claim quiz results before a quiz is taken
+    fresh = initial_state()
+    assert_equal(action_plan(fresh).state.highlight, False)
+    assert_equal("don't point to any" in str(action_plan(fresh).content), False)
+    assert_equal("30 practice messages" in str(index(fresh).content), True)
     # Breach steps: first steps always, extra sections for each ticked kind of data
     breach = breach_steps(state)
     assert_equal("Link('Tools', 'password_tools', classes='active')" in str(breach.content), True)

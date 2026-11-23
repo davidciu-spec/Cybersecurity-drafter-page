@@ -10,15 +10,16 @@ on:
   #   branches: ["main"]
   workflow_dispatch:
 
+# The build only reads the repository. Publishing rights are granted to the
+# deploy job alone, so the build's package installs never hold them.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
-# Only the newest deployment should finish if two are started close together.
+# Queue deployments instead of cancelling one that is already publishing
+# (GitHub's recommended setting for Pages).
 concurrency:
   group: "pages"
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   # Stay on Drafter v2 while still receiving v2 bug fixes.
@@ -137,7 +138,7 @@ jobs:
           shopt -s nullglob
           for path in *; do
             case "$path" in
-              "$MAIN_FILE"|requirements.txt|pyproject.toml|uv.lock|mypy.ini|_site|__pycache__)
+              "$MAIN_FILE"|requirements.txt|pyproject.toml|uv.lock|mypy.ini|_site|__pycache__|README*|LICENSE*|*.log)
                 continue
                 ;;
             esac
@@ -147,17 +148,11 @@ jobs:
           # uvx gives Drafter its own disposable environment. If the student's
           # project has requirements.txt, layer those packages into the same
           # environment so imports needed while compiling can succeed.
+          # The diagnostics step already wrote requirements.txt without any
+          # Drafter pin (including drafter[extras]), so reuse that file.
           DRAFTER_RUN=(uvx --from "$DRAFTER_SPEC")
-          if [[ -f requirements.txt ]]; then
-            # The workflow controls the Drafter major version. Ignore any
-            # Drafter pin in a legacy requirements.txt, but preserve the
-            # student's actual project dependencies.
-            FILTERED_REQUIREMENTS=".drafter-student-requirements.txt"
-            trap 'rm -f "$FILTERED_REQUIREMENTS"' EXIT
-            grep -Eiv '^[[:space:]]*drafter([[:space:]<>=!~@;]|$)' requirements.txt > "$FILTERED_REQUIREMENTS" || true
-            if [[ -s "$FILTERED_REQUIREMENTS" ]]; then
-              DRAFTER_RUN+=(--with-requirements "$FILTERED_REQUIREMENTS")
-            fi
+          if [[ -s "$STUDENT_REQUIREMENTS" ]]; then
+            DRAFTER_RUN+=(--with-requirements "$STUDENT_REQUIREMENTS")
           fi
 
           DRAFTER_RUN+=(
@@ -205,6 +200,16 @@ jobs:
             echo "No Drafter assertion output was detected during compilation." > _site/dashboard/tests.txt
           fi
 
+          # A failed assert_equal only prints a line; it never raises. Stop
+          # here so a site with failing tests is not deployed. Match only the
+          # failure lines themselves: Drafter prints "FAILURE at line N (...)"
+          # and plain bakery prints "FAILURE - [line N] ...".
+          FAILURE_LINE='^FAILURE( at line [0-9]+ | - \[line [0-9]+\])'
+          if grep -Eq "$FAILURE_LINE" "$BUILD_LOG"; then
+            grep -E "$FAILURE_LINE" "$BUILD_LOG" | sed 's/^/::error::/'
+            exit 1
+          fi
+
       # Speed up the first page load. By default the browser installs Drafter
       # from PyPI: a ~6 MB wheel that is mostly JavaScript the browser never
       # uses (the site already serves it from __drafter_assets), plus
@@ -214,6 +219,7 @@ jobs:
       # If the loader's format changes, index.html is left untouched and the
       # site still loads Drafter from PyPI (just more slowly).
       - name: Bundle a slim Drafter runtime
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -244,7 +250,8 @@ jobs:
 
           # Only the Python code is needed in the browser. Drafter's assets/
           # folder (~32 MB unpacked) is already published under __drafter_assets.
-          zip_path = Path("_site/drafter-runtime.zip")
+          zip_name = f"drafter-runtime-{version}.zip"
+          zip_path = Path("_site") / zip_name
           with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as bundle:
               for path in sorted(runtime.rglob("*")):
                   relative = path.relative_to(runtime)
@@ -260,7 +267,7 @@ jobs:
           # "drafter" as a PyPI requirement instead of a zip to download.
           html = html.replace(
               f'const url = "drafter=={version}";',
-              'const url = "./drafter-runtime.zip";',
+              f'const url = "./{zip_name}";',
               1,
           )
 
@@ -284,10 +291,12 @@ jobs:
       # requests, so package file names come from its own lock file. If
       # anything doesn't match, index.html is left untouched.
       - name: Add preload hints
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
+          import base64
           import json
           import re
           import urllib.request
@@ -303,20 +312,35 @@ jobs:
               raise SystemExit(0)
 
           base = base.group(1).rstrip("/")
-          with urllib.request.urlopen(base + "/pyodide-lock.json", timeout=30) as response:
-              lock = json.load(response)["packages"]
-
-          files = ["pyodide-lock.json", "pyodide.asm.wasm", "python_stdlib.zip"]
-          files += [lock[name]["file_name"] for name in ["micropip", *json.loads(packages.group(1))] if name in lock]
+          try:
+              with urllib.request.urlopen(base + "/pyodide-lock.json", timeout=30) as response:
+                  lock = json.load(response)["packages"]
+          except Exception as error:
+              print(f"::warning::Could not read the Pyodide lock file ({error}); preload hints were not added.")
+              raise SystemExit(0)
 
           origin = "/".join(base.split("/")[:3])
           hints = [
               f'<link rel="preconnect" href="{origin}" crossorigin>',
               f'<link rel="modulepreload" href="{base}/pyodide.asm.mjs">',
           ]
-          hints += [f'<link rel="preload" href="{base}/{name}" as="fetch" crossorigin>' for name in files]
-          if 'const url = "./drafter-runtime.zip";' in html:
-              hints.append('<link rel="preload" href="drafter-runtime.zip" as="fetch" crossorigin>')
+          hints += [f'<link rel="preload" href="{base}/{name}" as="fetch" crossorigin>'
+                    for name in ["pyodide-lock.json", "pyodide.asm.wasm", "python_stdlib.zip"]]
+
+          # Pyodide fetches each wheel with an integrity check. A preload is
+          # only reused when its integrity matches, so without it the browser
+          # would download every wheel twice.
+          for name in ["micropip", *json.loads(packages.group(1))]:
+              entry = lock.get(name)
+              if not entry or not entry.get("sha256"):
+                  continue
+              digest = base64.b64encode(bytes.fromhex(entry["sha256"])).decode()
+              hints.append(f'<link rel="preload" href="{base}/{entry["file_name"]}" as="fetch" '
+                           f'crossorigin integrity="sha256-{digest}">')
+
+          runtime = re.search(r'const url = "\./(drafter-runtime[^"]*\.zip)";', html)
+          if runtime:
+              hints.append(f'<link rel="preload" href="{runtime.group(1)}" as="fetch" crossorigin>')
 
           index.write_text(html.replace(head, head + "\n    " + "\n    ".join(hints), 1), encoding="utf-8")
           print("Added preload hints:", *hints, sep="\n  ")
@@ -335,7 +359,9 @@ jobs:
 
           "$DIAGNOSTIC_VENV/bin/python" -m coverage erase
 
-          "$DIAGNOSTIC_VENV/bin/python" -m coverage run "$MAIN_FILE" \
+          # DRAFTER_SKIP stops start_server from serving. If a future Drafter
+          # ignores it, the timeout fails this step instead of hanging the job.
+          timeout 300 "$DIAGNOSTIC_VENV/bin/python" -m coverage run "$MAIN_FILE" \
              2>&1 | tee _site/dashboard/coverage.txt
           
           "$DIAGNOSTIC_VENV/bin/python" -m coverage html \
@@ -412,7 +438,8 @@ jobs:
         if: ${{ !cancelled() }}
         shell: bash
         run: |
-          git log --oneline --decorate --graph --all -n 50 > _site/dashboard/commits.txt
+          # Only the deployed branch: --all would also publish unmerged branches.
+          git log --oneline --decorate --graph -n 50 > _site/dashboard/commits.txt
 
       - name: Create deployment dashboard
         if: ${{ !cancelled() }}
@@ -471,7 +498,7 @@ jobs:
           PY
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@main
+        uses: actions/upload-pages-artifact@v4
         with:
           path: ./_site
 
@@ -480,7 +507,11 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: build
+    permissions:
+      pages: write
+      id-token: write
 
     steps:
       - name: Deploy to GitHub Pages

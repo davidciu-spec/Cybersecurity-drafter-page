@@ -1,1 +1,9 @@
 drafter-debug.log
+__pycache__/
+*.pyc
+.venv/
+_site/
+.coverage
+htmlcov/
+.mypy_cache/
+.drafter-student-requirements.txt
