@@ -1,27 +1,905 @@
-:root{color-scheme:dark;font-size:clamp(16px,calc(.5vw + 8.5px),22px);font-family:Segoe UI,Arial,sans-serif;background:#0b1220;color:#e5edf7}
-html{scrollbar-gutter:stable}@supports not (scrollbar-gutter:stable){html{overflow-y:scroll}}
-*{box-sizing:border-box}body{margin:0 auto;max-width:69rem;padding:1.75rem 1.75rem 4rem;line-height:1.65}
-.drafter-frame--{max-width:none;width:100%}
-h1{font-size:clamp(2rem,5vw,3.6rem);line-height:1.13;max-width:51rem;letter-spacing:-.035em;margin:2.5rem 0 1.5rem}
-h2{font-size:1.25rem;line-height:1.4;margin-top:12px}h3{font-size:1.05rem;line-height:1.4;margin:0 0 .5rem}a{color:#7de0cc;margin-right:1.125rem;text-decoration:none}a[href^="http"]{text-decoration:underline}
-a:hover{color:#b4f1e4}
-.navigation{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;border-bottom:1px solid #304157;padding-bottom:1.375rem}
-.navigation a:first-child{display:inline-flex;align-items:center;gap:.625rem;font-size:1.35rem;line-height:1;font-weight:800;margin-right:auto;color:#fff;letter-spacing:.04em}
-.navigation a:first-child:before{content:"";width:1.75rem;height:1.75rem;flex:none;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 10.5 12 3l9 7.5'/%3E%3Cpath d='M5 9.5V21h5v-6h4v6h5V9.5'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 10.5 12 3l9 7.5'/%3E%3Cpath d='M5 9.5V21h5v-6h4v6h5V9.5'/%3E%3C/svg%3E") center/contain no-repeat}
-.navigation a:first-child:hover{color:#7de0cc}
-.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.25rem;margin-top:0}
-.tile,.panel{background:#142238;border:1px solid #304157;border-radius:1rem;padding:1.5625rem;margin:1.125rem 0}
-.panel.priority{background:#1c2f3f;border:2px solid #ffc879;box-shadow:0 0 0 4px rgba(255,200,121,.14)}
-.panel.priority h2{color:#ffc879}
-.panel.priority-note{border-color:#ffc879;color:#ffe3b8}
-.tile{position:relative;margin:0;min-height:14.375rem;transition:transform .2s ease,box-shadow .2s ease,background .2s ease,border-color .2s ease}
-.tile:hover,.tile:focus-within{transform:translateY(-6px);background:#1c304a;border-color:#7de0cc;box-shadow:0 14px 30px rgba(0,0,0,.35)}
-@media(prefers-reduced-motion:reduce){.tile{transition:none}.tile:hover,.tile:focus-within{transform:none}}
-.tile a{display:block;margin-top:1.5rem}.tile a:after{content:"";position:absolute;inset:0;border-radius:1rem}
-.tile-number{color:#7de0cc;font-family:monospace}
-button{background:#7de0cc;color:#0b1220;border:0;border-radius:8px;font-weight:700;padding:.8125rem 1.25rem;margin:.875rem 1rem .5rem 0;cursor:pointer}
-button:disabled{opacity:.6;cursor:wait}input,select{font:inherit;padding:.75rem;background:#0b1220;color:#fff;border:1px solid #8195ae;border-radius:6px;max-width:100%}
-input[type=password],input[type=email],select{display:block;width:min(100%,35rem);margin:.625rem 0 1.125rem}
-input[type=checkbox]{width:1.25rem;height:1.25rem;vertical-align:middle;margin-right:.625rem;accent-color:#7de0cc}
-label{display:block}p{max-width:75ch}.private-result{white-space:pre-wrap;color:#c0f2e7}
-:focus-visible{outline:3px solid #ffc879;outline-offset:4px}@media(max-width:650px){body{padding:18px 18px 48px}.navigation a:first-child{flex-basis:100%;margin-bottom:6px}.tiles{grid-template-columns:1fr}}
+/* Cyber Compass: all site styling.
+   Self-contained on purpose: no web fonts, no external CSS or images, so the
+   page only contacts outside services when a check button is pressed. */
+
+/* ==========================================================================
+   Design tokens
+   ========================================================================== */
+:root {
+  color-scheme: dark;
+
+  /* Colour */
+  --bg: #0b1220;
+  --surface: #142238;
+  --surface-2: #1c304a;
+  --border: #304157;
+  --border-strong: #8195ae;
+  --text: #e5edf7;
+  --muted: #9fb0c6;
+  --accent: #7de0cc;
+  --accent-hover: #b4f1e4;
+  --warn: #ffc879;
+  --danger: #ff8a8a;
+  --success: #7ee2a8;
+
+  /* Translucent tints of the colours above, for backgrounds */
+  --accent-soft: rgba(125, 224, 204, 0.12);
+  --warn-soft: rgba(255, 200, 121, 0.1);
+  --danger-soft: rgba(255, 138, 138, 0.1);
+  --success-soft: rgba(126, 226, 168, 0.1);
+  --grid-line: rgba(125, 224, 204, 0.05);
+
+  /* Shape and depth */
+  --radius: 1rem;
+  --radius-sm: 0.5rem;
+  --shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+
+  /* Type: system fonts only */
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+
+  /* Stroke icons (24x24), used as CSS masks so they take any colour */
+  --icon-shield: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3 4.5 6v5.5c0 4.4 3 7.8 7.5 9.5 4.5-1.7 7.5-5.1 7.5-9.5V6z'/%3E%3Cpath d='m14.6 9.4-1.7 3.5-3.5 1.7 1.7-3.5z'/%3E%3C/svg%3E");
+  --icon-key: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='8' cy='15' r='4'/%3E%3Cpath d='M11 12 20 3M16 7l3 3M13.5 9.5l2 2'/%3E%3C/svg%3E");
+  --icon-checklist: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3.5 6 1.5 1.5L8 4.5M3.5 13l1.5 1.5 3-3M11 6h9.5M11 13h9.5M11 19.5h9.5M4 19.5h.01'/%3E%3C/svg%3E");
+  --icon-quiz: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01'/%3E%3C/svg%3E");
+  --icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+  --icon-check-circle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='m8 12.5 3 3 5-6'/%3E%3C/svg%3E");
+  --icon-alert: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5 2.5 20h19z'/%3E%3Cpath d='M12 10v4.5M12 17.5h.01'/%3E%3C/svg%3E");
+  --icon-info: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v5.5M12 7.5h.01'/%3E%3C/svg%3E");
+  --icon-x-circle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='m9 9 6 6m0-6-6 6'/%3E%3C/svg%3E");
+  --icon-spinner: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M21 12a9 9 0 1 1-6.2-8.55'/%3E%3C/svg%3E");
+  --icon-external: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5'/%3E%3C/svg%3E");
+
+  /* Page defaults; font-size scales gently with the viewport (16px to 22px) */
+  font-size: clamp(16px, calc(0.5vw + 8.5px), 22px);
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+html {
+  scrollbar-gutter: stable;
+}
+
+@supports not (scrollbar-gutter: stable) {
+  html {
+    overflow-y: scroll;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  max-width: 69rem;
+  margin: 0 auto;
+  padding: 1.75rem 1.75rem 4rem;
+  line-height: 1.65;
+}
+
+/* Drafter wraps every page in this frame; let it fill the body width. */
+.drafter-frame-- {
+  max-width: none;
+  width: 100%;
+}
+
+h1 {
+  max-width: 51rem;
+  margin: 2.5rem 0 1.5rem;
+  font-size: clamp(2rem, 5vw, 3.6rem);
+  line-height: 1.13;
+  letter-spacing: -0.035em;
+}
+
+h2 {
+  margin-top: 12px;
+  font-size: 1.25rem;
+  line-height: 1.4;
+}
+
+h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+
+p {
+  max-width: 75ch;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+a[href^="http"] {
+  text-decoration: underline;
+}
+
+/* Small external-link icon after outbound links */
+a[href^="http"]::after {
+  content: "";
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  margin-left: 0.35em;
+  vertical-align: -0.1em;
+  background: currentColor;
+  -webkit-mask: var(--icon-external) center / contain no-repeat;
+  mask: var(--icon-external) center / contain no-repeat;
+}
+
+:focus-visible {
+  outline: 3px solid var(--warn);
+  outline-offset: 4px;
+}
+
+/* ==========================================================================
+   Navigation
+   ========================================================================== */
+.navigation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 1.375rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.navigation a {
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  line-height: 1.3;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.navigation a:hover {
+  background: var(--surface-2);
+}
+
+/* Current section: tinted pill with an accent underline and bolder text */
+.navigation a.active {
+  background: var(--accent-soft);
+  box-shadow: inset 0 -2px 0 var(--accent);
+  color: var(--accent-hover);
+  font-weight: 700;
+}
+
+.navigation .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-right: auto;
+  padding: 0.25rem 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: #fff;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.navigation .brand:hover {
+  background: none;
+  color: var(--accent);
+}
+
+.navigation .brand::before {
+  content: "";
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  background: var(--accent);
+  -webkit-mask: var(--icon-shield) center / contain no-repeat;
+  mask: var(--icon-shield) center / contain no-repeat;
+}
+
+/* ==========================================================================
+   Page heading and hero
+   ========================================================================== */
+.page-head {
+  margin: 2rem 0 1.5rem;
+}
+
+.page-head h1 {
+  margin: 0 0 0.75rem;
+}
+
+.lead {
+  max-width: 60ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.15rem;
+}
+
+.hero {
+  position: relative;
+  margin: 1.75rem 0 1.5rem;
+  padding: clamp(2rem, 6vw, 4rem) clamp(1.25rem, 4vw, 3rem);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  /* Teal glow, faint grid, then the base surface colour */
+  background:
+    radial-gradient(60% 90% at 88% 0%, rgba(125, 224, 204, 0.14), transparent 70%),
+    linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px) 0 0 / 32px 32px,
+    var(--surface);
+}
+
+.hero h1 {
+  font-size: clamp(2.4rem, 6.5vw, 4.6rem);
+  line-height: 1.05;
+}
+
+.hero .lead {
+  font-size: clamp(1.1rem, 2vw, 1.3rem);
+}
+
+.hero button {
+  margin: 1.75rem 0 0;
+  padding: 0.95rem 1.75rem;
+  font-size: 1.05rem;
+}
+
+/* ==========================================================================
+   Cards: panels and home tiles
+   ========================================================================== */
+.tile,
+.panel {
+  margin: 1.125rem 0;
+  padding: 1.5625rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-top: 0;
+}
+
+.tile {
+  position: relative;
+  min-height: 14.375rem;
+  margin: 0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.tile:hover,
+.tile:focus-within {
+  transform: translateY(-6px);
+  background: var(--surface-2);
+  border-color: var(--accent);
+  box-shadow: var(--shadow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile {
+    transition: none;
+  }
+
+  .tile:hover,
+  .tile:focus-within {
+    transform: none;
+  }
+}
+
+.tile h2 {
+  margin: 0 0 0.5rem;
+}
+
+/* The whole tile is clickable: the link's pseudo-element covers the card */
+.tile a {
+  display: block;
+  margin-top: 1.5rem;
+}
+
+.tile a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+}
+
+.tile-number {
+  position: absolute;
+  top: 1.5625rem;
+  right: 1.5625rem;
+  color: var(--accent);
+  font-family: var(--mono);
+}
+
+/* Icon badge: tinted square with a masked stroke icon inside */
+.tile-icon {
+  position: relative;
+  display: block;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 1rem;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+}
+
+.tile-icon::before {
+  content: "";
+  position: absolute;
+  inset: 0.7rem;
+  background: var(--accent);
+  -webkit-mask: var(--tile-icon) center / contain no-repeat;
+  mask: var(--tile-icon) center / contain no-repeat;
+}
+
+.icon-key {
+  --tile-icon: var(--icon-key);
+}
+
+.icon-checklist {
+  --tile-icon: var(--icon-checklist);
+}
+
+.icon-quiz {
+  --tile-icon: var(--icon-quiz);
+}
+
+.icon-shield {
+  --tile-icon: var(--icon-shield);
+}
+
+/* Highlighted checklist tip and the note that explains the highlight */
+.panel.priority {
+  background: #1c2f3f;
+  border: 2px solid var(--warn);
+  box-shadow: 0 0 0 4px rgba(255, 200, 121, 0.14);
+}
+
+.panel.priority h2 {
+  color: var(--warn);
+}
+
+.panel.priority-note {
+  border-color: var(--warn);
+  color: #ffe3b8;
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+button {
+  margin: 0.875rem 1rem 0.5rem 0;
+  padding: 0.8125rem 1.25rem;
+  background: var(--accent);
+  color: var(--bg);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+button:hover {
+  background: var(--accent-hover);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* Outline button for secondary actions */
+button.secondary {
+  background: transparent;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+button.secondary:hover {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+/* Red outline for destructive actions; fills red on hover */
+button.danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+button.danger:hover {
+  background: var(--danger);
+  color: var(--bg);
+}
+
+/* ==========================================================================
+   Form controls
+   ========================================================================== */
+label {
+  display: block;
+}
+
+input,
+select {
+  max-width: 100%;
+  padding: 0.75rem;
+  background: var(--bg);
+  color: #fff;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  font: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:hover,
+select:hover {
+  border-color: var(--accent);
+}
+
+input:focus,
+select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+input[type="password"],
+input[type="email"],
+select {
+  display: block;
+  width: min(100%, 35rem);
+  margin: 0.625rem 0 1.125rem;
+}
+
+/* Custom chevron replaces the native select arrow */
+select {
+  padding-right: 2.75rem;
+  background-color: var(--bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237de0cc' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 0.85rem center;
+  background-repeat: no-repeat;
+  background-size: 1.1rem;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+input[type="checkbox"] {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0 0.625rem 0 0;
+  vertical-align: middle;
+  accent-color: var(--accent);
+}
+
+/* Checkbox followed by its label on one row */
+.tip-check,
+label.consent {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-top: 0.75rem;
+}
+
+.tip-check input[type="checkbox"],
+label.consent input[type="checkbox"] {
+  margin: 0;
+}
+
+.tip-check label {
+  display: inline;
+}
+
+label.consent {
+  align-items: flex-start;
+}
+
+label.consent input[type="checkbox"] {
+  margin-top: 0.3rem;
+}
+
+/* ==========================================================================
+   Checklist
+   ========================================================================== */
+.progress-card {
+  margin-bottom: 1.5rem;
+}
+
+.progress-label {
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.progress-note {
+  margin-top: 0.75rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* Native <progress>: rounded track, coloured fill (--bar) in every engine */
+progress.progress {
+  --bar: var(--accent);
+  display: block;
+  width: 100%;
+  height: 0.75rem;
+  overflow: hidden;
+  background: var(--bg);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--bar);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+progress.progress::-webkit-progress-bar {
+  background: var(--bg);
+  border-radius: 999px;
+}
+
+progress.progress::-webkit-progress-value {
+  background: var(--bar);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+progress.progress::-moz-progress-bar {
+  background: var(--bar);
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  progress.progress::-webkit-progress-value {
+    transition: none;
+  }
+}
+
+/* Completed tip: green edge, check mark before the heading, dimmed advice */
+.panel.tip.done {
+  border-left: 4px solid var(--success);
+  color: var(--muted);
+}
+
+.panel.tip.done h2 {
+  color: var(--text);
+}
+
+.panel.tip.done h2::before {
+  content: "";
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  margin-right: 0.5rem;
+  vertical-align: -0.15em;
+  background: var(--success);
+  -webkit-mask: var(--icon-check) center / contain no-repeat;
+  mask: var(--icon-check) center / contain no-repeat;
+}
+
+/* ==========================================================================
+   Quiz
+   ========================================================================== */
+.panel.question {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 1rem;
+  align-items: start;
+}
+
+.panel.question > * {
+  grid-column: 2;
+}
+
+.panel.question > .q-number {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.panel.question label {
+  margin: 0;
+  font-weight: 600;
+}
+
+.q-number {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  font-family: var(--mono);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.panel.question select {
+  width: min(100%, 28rem);
+  margin-bottom: 0;
+}
+
+/* Validation message: warning icon plus text, not colour alone */
+.panel.alert {
+  position: relative;
+  padding-left: 3.5rem;
+  background: var(--danger-soft);
+  border-color: var(--danger);
+  border-left-width: 4px;
+}
+
+.panel.alert::before {
+  content: "";
+  position: absolute;
+  top: 1.5625rem;
+  left: 1.25rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  background: var(--danger);
+  -webkit-mask: var(--icon-alert) center / contain no-repeat;
+  mask: var(--icon-alert) center / contain no-repeat;
+}
+
+/* ==========================================================================
+   Results
+   ========================================================================== */
+.score-card {
+  --score-color: var(--accent);
+  --bar: var(--score-color);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1.5rem 2.5rem;
+  border-left: 4px solid var(--score-color);
+}
+
+.score-card.score-low {
+  --score-color: var(--danger);
+}
+
+.score-card.score-mid {
+  --score-color: var(--warn);
+}
+
+.score-card.score-high {
+  --score-color: var(--success);
+}
+
+.score-card progress.progress {
+  grid-column: 1 / -1;
+}
+
+.score-number {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.score-value {
+  color: var(--score-color);
+  font-size: clamp(3.5rem, 9vw, 5.5rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.score-max {
+  color: var(--muted);
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.score-text h2 {
+  margin: 0 0 0.5rem;
+}
+
+.score-text p {
+  margin: 0 0 0.5rem;
+}
+
+/* Recommendations: numbered cards with a circular counter badge */
+ol.steps {
+  margin: 1rem 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+ol.steps li {
+  position: relative;
+  margin: 0 0 0.875rem;
+  padding: 1.1rem 1.25rem 1.1rem 4rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  counter-increment: step;
+}
+
+ol.steps li::before {
+  content: counter(step);
+  position: absolute;
+  top: 1rem;
+  left: 1.1rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  background: var(--accent);
+  color: var(--bg);
+  border-radius: 50%;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* ==========================================================================
+   About: sources
+   ========================================================================== */
+ul.sources {
+  margin: 1rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+ul.sources li {
+  border-bottom: 1px solid var(--border);
+}
+
+ul.sources li:last-child {
+  border-bottom: 0;
+}
+
+ul.sources a {
+  display: block;
+  padding: 0.65rem 0;
+}
+
+/* ==========================================================================
+   Private tools (password and email checks)
+   ========================================================================== */
+.private-result {
+  position: relative;
+  margin: 1rem 0 0;
+  white-space: pre-wrap;
+  color: var(--text);
+}
+
+.private-result:empty {
+  display: none;
+}
+
+/* A state turns the message into a callout: coloured edge plus an icon */
+.private-result[data-state] {
+  padding: 0.9rem 1rem 0.9rem 3rem;
+  background: var(--surface-2);
+  border-left: 4px solid var(--muted);
+  border-radius: var(--radius-sm);
+}
+
+.private-result[data-state]::before {
+  content: "";
+  position: absolute;
+  top: 0.95rem;
+  left: 0.85rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  background: var(--muted);
+  -webkit-mask: var(--result-icon) center / contain no-repeat;
+  mask: var(--result-icon) center / contain no-repeat;
+}
+
+.private-result[data-state="checking"] {
+  --result-icon: var(--icon-spinner);
+  border-left-color: var(--accent);
+}
+
+.private-result[data-state="checking"]::before {
+  background: var(--accent);
+  animation: result-spin 1s linear infinite;
+}
+
+.private-result[data-state="exposed"] {
+  --result-icon: var(--icon-alert);
+  background: var(--danger-soft);
+  border-left-color: var(--danger);
+}
+
+.private-result[data-state="exposed"]::before {
+  background: var(--danger);
+}
+
+.private-result[data-state="clear"] {
+  --result-icon: var(--icon-check-circle);
+  background: var(--success-soft);
+  border-left-color: var(--success);
+}
+
+.private-result[data-state="clear"]::before {
+  background: var(--success);
+}
+
+.private-result[data-state="warning"] {
+  --result-icon: var(--icon-info);
+  background: var(--warn-soft);
+  border-left-color: var(--warn);
+}
+
+.private-result[data-state="warning"]::before {
+  background: var(--warn);
+}
+
+.private-result[data-state="error"] {
+  --result-icon: var(--icon-x-circle);
+  background: var(--danger-soft);
+  border-left-color: var(--danger);
+}
+
+.private-result[data-state="error"]::before {
+  background: var(--danger);
+}
+
+@keyframes result-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .private-result[data-state="checking"]::before {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+.site-footer {
+  margin-top: 3rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.site-footer p {
+  margin: 0.25rem 0;
+}
+
+/* ==========================================================================
+   Small screens
+   ========================================================================== */
+@media (max-width: 650px) {
+  body {
+    padding: 18px 18px 48px;
+  }
+
+  .navigation .brand {
+    flex-basis: 100%;
+    margin-bottom: 6px;
+  }
+
+  .tiles {
+    grid-template-columns: 1fr;
+  }
+
+  .score-card {
+    grid-template-columns: 1fr;
+  }
+}

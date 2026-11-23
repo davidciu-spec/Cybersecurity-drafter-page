@@ -1,7 +1,9 @@
 /* Advanced browser code: Web Crypto, async fetch, event delegation and AbortSignal.
    Secrets never become Drafter route parameters or State. No storage or logging.
    User-controlled/provider strings are displayed via textContent, never HTML.
-   Closure-local variables are short-lived, not global application state. */
+   Closure-local variables are short-lived, not global application state.
+   Each update also sets output.dataset.state (checking, exposed, clear, warning
+   or error) so CSS can style the message; it is always a fixed keyword. */
 (() => {
   'use strict';
   // Prevent the surrounding Drafter form from submitting either secret.
@@ -26,16 +28,19 @@
     const mode = button.dataset.private;
     const input = section.querySelector(mode === 'password' ? '#private-password' : '#private-email');
     if (!input.value || !input.checkValidity()) {
+      output.dataset.state = 'warning';
       output.textContent = 'Enter a valid ' + (mode === 'password' ? 'password sample.' : 'email address.');
       return;
     }
     if (mode === 'email' && !section.querySelector('#private-consent').checked) {
+      output.dataset.state = 'warning';
       output.textContent = 'Please confirm permission and consent before checking.';
       return;
     }
     let secret = input.value;
     input.value = '';
     button.disabled = true;
+    output.dataset.state = 'checking';
     output.textContent = 'Checking…';
     try {
       if (mode === 'password') {
@@ -63,6 +68,7 @@
           const [suffix, occurrences] = row.split(':');
           if (suffix.toUpperCase() === hash.slice(5)) count = Number(occurrences);
         }
+        output.dataset.state = count > 0 ? 'exposed' : 'clear';
         output.textContent = guidance + '\n' + (count > 0
           ? 'Exposed: found ' + count.toLocaleString() + ' times in HIBP. Do not use it; change it wherever reused.'
           : 'No match in HIBP Pwned Passwords. This does not prove the password is safe.');
@@ -74,23 +80,27 @@
           signal: AbortSignal.timeout(15000)
         });
         if (response.status === 429) {
+          output.dataset.state = 'warning';
           output.textContent = 'The provider rate limit was reached. Wait before trying again; no result was obtained.';
           return;
         }
         const data = await response.json();
         if (response.status === 404 && (data.Error === 'Not found' || data.error === 'Not found')) {
+          output.dataset.state = 'clear';
           output.textContent = 'No match reported by XposedOrNot. Its coverage is incomplete; this is not proof of safety.';
           return;
         }
         if (!response.ok || !Array.isArray(data.breaches)) throw new Error('service');
         const names = data.breaches.flat();
         if (!names.every(name => typeof name === 'string')) throw new Error('format');
+        output.dataset.state = names.length ? 'exposed' : 'clear';
         output.textContent = names.length
           ? 'XposedOrNot reports exposure in: ' + names.join(', ') +
             '. Change affected or reused passwords, enable MFA, and review account activity.'
           : 'No match reported by XposedOrNot. This does not prove the account is safe.';
       }
     } catch (_) {
+      output.dataset.state = 'error';
       output.textContent += '\nThe breach lookup could not finish. No conclusion about exposure can be drawn. Try later.';
     } finally {
       secret = '';

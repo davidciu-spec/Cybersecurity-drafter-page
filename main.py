@@ -8,18 +8,18 @@ set_site_information(
     description = "Cybersecurity",
     sources = "LLM use for the template, CSS, JS. Used APIs (documented below). ",
     planning = "",
-    links = ["https://t3.chat/share/4jor4lmt84","https://t3.chat/share/tfl3i1erc","https://t3.chat/share/td1jvtzswf","https://chatgpt.com/s/cx_6af6414a64648191b9246e67444c59a1","https://xposedornot.com/api_doc","https://chatgpt.com/s/cx_6af66e1f8aec81918e07b21fb18fc6b9","https://www.cisa.gov/secure-our-world","https://www.fbi.gov/how-we-can-help-you/online-safety/"
+    links = ["https://t3.chat/share/4jor4lmt84","https://t3.chat/share/tfl3i1erc","https://t3.chat/share/td1jvtzswf","https://chatgpt.com/s/cx_6af6414a64648191b9246e67444c59a1","https://xposedornot.com/api_doc","https://chatgpt.com/s/cx_6af66e1f8aec81918e07b21fb18fc6b9","https://www.cisa.gov/secure-our-world","https://www.fbi.gov/how-we-can-help-you/online-safety/stay-safe-online-simple-tips-for-adults",
             "https://docs.google.com/document/d/1o9OBWE1hz9fVb5NnTaveS_2FcbgzdIhejqWtBFjfDXM/edit?usp=sharing - CISC Design", "https://docs.google.com/document/d/1xgStWdQnBjMmXmBvU1YjNi4mfz141Jlq5g5pE_L4B5k/edit?usp=sharing - CISC 106 Selection"]
     )
 
 @dataclass
 class SafetyTip:
     """
-    Creates a safteytip
+    Creates a safety tip
     args:
         title (str) - the name of the safety tip
         advice (str) - the advice that is a part of the tip (the description)
-        completed (bool) - a checklist change if the tip has been completed 
+        completed (bool) - whether the tip has been completed on the checklist
     """
     title: str
     advice: str
@@ -93,37 +93,60 @@ def initial_state() -> State:
     ], 0, 0, [], "Accounts", [], False)
 
 
-def shell(state: State, title: str, content: list) -> Page:
+def shell(state: State, title: str, content: list, lead: str = "",
+          active: str = "", hero: bool = False) -> Page:
     """
-    Creates a page with navigation links and a title
+    Creates a page with navigation links, a heading, and a footer
     args:
         state (State) - the current session state
         title (str) - the heading shown on the page
         content (list) - the text and components shown on the page
+        lead (str) - a short sentence shown under the heading (empty for none)
+        active (str) - the navigation link for this section ("Tools", "Checklist", "Quiz", "About", or "")
+        hero (bool) - whether to show the large home page heading with a quiz button
     returns:
         Page - the page with the shared layout
     """
+    links = [Link("Cyber Compass", "index", classes="brand")]
+    for name, target in [("Tools", "password_tools"), ("Checklist", "checklist"),
+                         ("Quiz", "quiz"), ("About", "about")]:
+        if name == active:
+            links.append(Link(name, target, classes="active"))
+        else:
+            links.append(Link(name, target))
+    heading = [Header(title)]
+    if lead:
+        heading.append(Div(lead, classes="lead"))
+    head_classes = "page-head"
+    if hero:
+        heading.append(Button("Take the quiz", "quiz"))
+        head_classes = "page-head hero"
+    footer = FooterContent(
+        Div("Cyber Compass · CISC 106 · by David Ciupei"),
+        Div("No accounts, cookies or tracking. Nothing you enter is stored."),
+        classes="site-footer")
     return Page(state, [
-        Div(Link("Home", "index"), Link("Tools", "password_tools"),
-            Link("Checklist", "checklist"), Link("Quiz", "quiz"),
-            Link("About", "about"), classes="navigation"),
-        Header(title), *content,
+        Div(*links, classes="navigation"),
+        Div(*heading, classes=head_classes),
+        *content,
+        footer,
     ])
 
 
-def tile(number: str, title: str, description: str, target: str) -> Div:
+def tile(icon: str, number: str, title: str, description: str, target: str) -> Div:
     """
     Creates a card with a link to another page
     args:
+        icon (str) - the icon name for the card (key, checklist, quiz, or shield)
         number (str) - the number shown on the card
         title (str) - the name of the card
         description (str) - the description of the page the card links to
         target (str) - the route the card links to
     returns:
-        Div - the card with its number, title, description, and link
+        Div - the card with its icon, number, title, description, and link
     """
-    return Div(Span(number, classes="tile-number"), Header(title, 2),
-               description, Link("Open " + title + " →", target), classes="tile")
+    return Div(Span("", classes="tile-icon icon-" + icon), Span(number, classes="tile-number"),
+               Header(title, 2), description, Link("Open " + title + " →", target), classes="tile")
 
 
 @route
@@ -137,12 +160,12 @@ def index(state: State) -> Page:
     """
     return shell(state, "Cyber Compass", [
         Div(
-            tile("01", "Password & breach tools", "Check passwords and email exposure.", "password_tools"),
-            tile("02", "Cyber Safety checklist", "Turn advice into six everyday habits.", "checklist"),
-            tile("03", "Cyber Safety Quiz", "Ten questions. A plan based on your answers.", "quiz"),
-            tile("04", "About & privacy", "Understand the project and where your data goes.", "about"),
+            tile("key", "01", "Password & breach tools", "Check passwords and email exposure.", "password_tools"),
+            tile("checklist", "02", "Cyber Safety checklist", "Turn advice into six everyday habits.", "checklist"),
+            tile("quiz", "03", "Cyber Safety Quiz", "Ten questions. A plan based on your answers.", "quiz"),
+            tile("shield", "04", "About & privacy", "Understand the project and where your data goes.", "about"),
             classes="tiles"),
-    ])
+    ], "Learn practical cybersecurity habits, one small step at a time.", hero=True)
 
 
 @route
@@ -167,7 +190,7 @@ def password_tools(state: State) -> Page:
         of its SHA-1 hash go to Have I Been Pwned. The field clears immediately.</p>
         <button type="button" data-private="password">Check password</button>
         <p id="password-result" class="private-result" role="status" aria-live="polite"></p></section>'''),
-    ])
+    ], "See if a password or email address has shown up in a known data breach.", "Tools")
 
 
 @route
@@ -179,7 +202,8 @@ def email_tools(state: State) -> Page:
     returns:
         Page - the page with the email checker
     """
-    return shell(state, "Has your email appeared in a breach?", email_content())
+    return shell(state, "Has your email appeared in a breach?", email_content(),
+                 "A quick, private look at known breaches.", "Tools")
 
 
 def email_content() -> list:
@@ -247,15 +271,16 @@ def checklist_page(state: State) -> Page:
         if tip.completed:
             completed += 1
         field = CheckBox("tip" + str(position), tip.completed)
-        classes = "panel"
-        if state.highlight and position in state.priority_tips and not tip.completed:
-            classes = "panel priority"
+        classes = "panel tip"
+        title = Header(tip.title, 2)
+        if tip.completed:
+            classes = "panel tip done"
+        elif state.highlight and position in state.priority_tips:
+            classes = "panel tip priority"
             flagged.append(tip.title)
             title = Header(tip.title + " · Recommended from your quiz", 2)
-        else:
-            title = Header(tip.title, 2)
         content.append(Div(title, tip.advice,
-                           Label("I have done this", field), field,
+                           Div(field, Label("I have done this", field), classes="tip-check"),
                            classes=classes))
     intro = []
     if state.highlight and flagged:
@@ -265,11 +290,14 @@ def checklist_page(state: State) -> Page:
         intro.append(Div("Your quiz answers don't point to any unfinished checklist habits. "
                          "Keep it up.", classes="panel priority-note"))
     focus_field = SelectBox("focus", ["Accounts", "Devices", "Awareness"], state.focus)
+    progress = Div(Div(str(completed) + " of 6 habits completed", classes="progress-label"),
+                   ProgressBar(completed, max=6, classes="progress"),
+                   Div("Progress lasts for this open session.", classes="progress-note"),
+                   classes="panel progress-card")
     return shell(state, "Your safety checklist", [
-        str(completed) + " of 6 habits completed. Progress lasts for this open session.",
-        *intro, *content, Label("My current focus", focus_field), focus_field,
+        progress, *intro, *content, Label("My current focus", focus_field), focus_field,
         Button("Save my progress", "save_checklist"),
-    ])
+    ], "Six everyday habits. Tick them off as you go.", "Checklist")
 
 
 @route
@@ -309,9 +337,10 @@ def quiz(state: State) -> Page:
     content = ["Answer honestly. This is a habit check, not a technical security audit."]
     for position, question in enumerate(QUESTIONS):
         field = SelectBox("q" + str(position), list(CHOICES))
-        content.append(Div(Label(str(position + 1) + ". " + question[0],
-                               field), field, classes="panel"))
-    return shell(state, "How are your everyday habits?", content + [Button("Get my action plan", "score_quiz")])
+        content.append(Div(Span(str(position + 1), classes="q-number"),
+                           Label(question[0], field), field, classes="panel question"))
+    return shell(state, "How are your everyday habits?", content + [Button("Get my action plan", "score_quiz")],
+                 "Ten quick questions. Nothing is saved.", "Quiz")
 
 
 @route
@@ -338,7 +367,7 @@ def score_quiz(state: State, q0: str, q1: str, q2: str, q3: str, q4: str,
     for answer in answers:
         if answer not in CHOICES[1:]:
             page = quiz(state)
-            page.content.insert(3, "Please answer all ten questions before submitting.")
+            page.content.insert(3, Div("Please answer all ten questions before submitting.", classes="panel alert"))
             return page
     state.quiz_score = 0
     state.recommendations = []
@@ -368,7 +397,8 @@ def results(state: State) -> Page:
         Page - the results and recommendations, or a message to take the quiz first
     """
     if state.quiz_attempts == 0:
-        return shell(state, "Your action plan", ["Take the quiz to build your plan.", Button("Start quiz", "quiz")])
+        return shell(state, "Your action plan", ["Take the quiz to build your plan.", Button("Start quiz", "quiz")],
+                     "Your results will appear here after the quiz.", "Quiz")
     if state.quiz_score >= 16:
         message = "A solid foundation. Keep these habits consistent."
     elif state.quiz_score >= 10:
@@ -376,12 +406,33 @@ def results(state: State) -> Page:
     else:
         message = "Start with your email account: a unique password and MFA."
     suggestions = state.recommendations or ["Keep reviewing your security habits as your accounts change."]
+    score_card = Div(
+        Div(Span(str(state.quiz_score), classes="score-value"), Span("/ 20", classes="score-max"),
+            classes="score-number"),
+        Div(Header(str(state.quiz_score) + " / 20 habit points", 2), message,
+            "This score reflects your answers; it does not measure your risk of being hacked.",
+            classes="score-text"),
+        ProgressBar(state.quiz_score, max=20, classes="progress"),
+        classes="panel score-card " + score_band(state.quiz_score))
     return shell(state, "Your next steps", [
-        Header(str(state.quiz_score) + " / 20 habit points", 2), message,
-        "This score reflects your answers; it does not measure your risk of being hacked.",
-        *[Div(suggestion, classes="panel") for suggestion in suggestions],
-        Button("Turn advice into action", "action_plan"), Button("Retake quiz", "quiz"),
-    ])
+        score_card, Header("Your next steps", 2), NumberedList(suggestions, classes="steps"),
+        Button("Turn advice into action", "action_plan"), Button("Retake quiz", "quiz", classes="secondary"),
+    ], "Small changes add up. Start with the first step.", "Quiz")
+
+
+def score_band(score: int) -> str:
+    """
+    Chooses the style class that matches a quiz score
+    args:
+        score (int) - the quiz score from 0 to 20
+    returns:
+        str - "score-high" for 16 or more, "score-mid" for 10 to 15, otherwise "score-low"
+    """
+    if score >= 16:
+        return "score-high"
+    if score >= 10:
+        return "score-mid"
+    return "score-low"
 
 
 @route
@@ -412,13 +463,15 @@ def about(state: State) -> Page:
         "A match means known exposure, not proof your current account is compromised. No match is not "
         "proof of safety. Change exposed or reused passwords, enable MFA, and review account activity.",
         Header("Sources", 2),
-        Link("Have I Been Pwned API documentation", "https://haveibeenpwned.com/API/V3"),
-        Link("XposedOrNot free API", "https://xposedornot.com/api_doc"),
-        Link("CISA Secure Our World", "https://www.cisa.gov/secure-our-world"),
-        Link("FBI online safety advice", "https://www.fbi.gov/how-we-can-help-you/online-safety/"
-             "stay-safe-online-simple-tips-for-adults"),
-        Button("Clear checklist and quiz progress", "reset_progress"),
-    ])
+        BulletedList([
+            Link("Have I Been Pwned API documentation", "https://haveibeenpwned.com/API/V3"),
+            Link("XposedOrNot free API", "https://xposedornot.com/api_doc"),
+            Link("CISA Secure Our World", "https://www.cisa.gov/secure-our-world"),
+            Link("FBI online safety advice", "https://www.fbi.gov/how-we-can-help-you/online-safety/"
+                 "stay-safe-online-simple-tips-for-adults"),
+        ], classes="sources"),
+        Button("Clear checklist and quiz progress", "reset_progress", classes="danger"),
+    ], "What this site does, what it never stores, and where its advice comes from.", "About")
 
 
 @route
@@ -429,12 +482,11 @@ def reset_progress(state: State) -> Page:
         state (State) - the current session state being replaced
     returns:
         Page - the reset confirmation page with a new starting state
-            
     """
     return shell(initial_state(), "Progress reset", [
         "Current progress has been reset. Reload the browser to clear older Drafter history too.",
-        Button("Return home", "index"),
-    ])
+        Button("Return home", "index", classes="secondary"),
+    ], "Your checklist and quiz answers are cleared.", "About")
 
 
 def run_bakery_tests() -> None:
@@ -453,31 +505,61 @@ def run_bakery_tests() -> None:
     assert_equal(state.focus, "Accounts")
     assert_equal(state.tips[0].completed, False)
     assert_equal("Example title" in str(shell(state, "Example title", []).content), True)
-    assert_equal("Open Example" in str(tile("01", "Example", "Description", "quiz")), True)
+    assert_equal("Open Example" in str(tile("key", "01", "Example", "Description", "quiz")), True)
+    assert_equal("icon-key" in str(tile("key", "01", "Example", "Description", "quiz")), True)
+    assert_equal("site-footer" in str(shell(state, "Example title", []).content), True)
+    assert_equal("classes='active'" in str(shell(state, "Example", []).content), False)
+    assert_equal("page-head hero" in str(index(state).content), True)
+    assert_equal("Take the quiz" in str(index(state).content), True)
+    assert_equal("classes='lead'" in str(index(state).content), True)
+    assert_equal(score_band(0), "score-low")
+    assert_equal(score_band(9), "score-low")
+    assert_equal(score_band(10), "score-mid")
+    assert_equal(score_band(15), "score-mid")
+    assert_equal(score_band(16), "score-high")
+    assert_equal(score_band(20), "score-high")
     assert_equal("private-consent" in str(email_content()), True)
     assert_equal("Cyber Compass" in str(index(state).content), True)
     assert_equal("private-password" in str(password_tools(state).content), True)
     assert_equal("private-email" in str(password_tools(state).content), True)
     assert_equal("private-email" in str(email_tools(state).content), True)
     assert_equal("0 of 6" in str(checklist(state).content), True)
-    assert_equal("10. " in str(quiz(state).content), True)
+    assert_equal("Link('Checklist', 'checklist', classes='active')" in str(checklist(state).content), True)
+    assert_equal("Link('Quiz', 'quiz', classes='active')" in str(quiz(state).content), True)
+    assert_equal("Link('Tools', 'password_tools', classes='active')" in str(email_tools(state).content), True)
+    assert_equal("Link('About', 'about', classes='active')" in str(about(state).content), True)
+    assert_equal("Link('Cyber Compass', 'index', classes='brand')" in str(index(state).content), True)
+    assert_equal("ProgressBar(0, 6" in str(checklist(state).content), True)
+    assert_equal("Span('10', classes='q-number')" in str(quiz(state).content), True)
+    assert_equal(str(quiz(state).content).count("classes='panel question'"), 10)
+    assert_equal("classes='danger'" in str(about(state).content), True)
+    assert_equal("classes='sources'" in str(about(state).content), True)
+    assert_equal("site-footer" in str(about(state).content), True)
     assert_equal("Take the quiz" in str(results(state).content), True)
     assert_equal("Your data" in str(about(state).content), True)
     saved = save_checklist(state, True, False, True, False, True, False, "Devices")
     assert_equal([tip.completed for tip in saved.state.tips], [True, False, True, False, True, False])
     assert_equal(saved.state.focus, "Devices")
     assert_equal("3 of 6" in str(saved.content), True)
+    assert_equal(str(saved.content).count("classes='panel tip done'"), 3)
+    assert_equal(str(saved.content).count("classes='panel tip'"), 3)
     save_checklist(state, False, False, False, False, False, False, "Invalid")
     assert_equal(state.focus, "Devices")
     assert_equal([tip.completed for tip in state.tips], [False] * 6)
-    for answer, expected_score, expected_count in [("Yes", 20, 0), ("Sometimes", 10, 10), ("No", 0, 10)]:
+    for answer, expected_score, expected_count, band in [("Yes", 20, 0, "score-high"),
+                                                         ("Sometimes", 10, 10, "score-mid"),
+                                                         ("No", 0, 10, "score-low")]:
         scored = score_quiz(state, *([answer] * 10))
         assert_equal(scored.state.quiz_score, expected_score)
         assert_equal(len(scored.state.recommendations), expected_count)
+        assert_equal("panel score-card " + band in str(scored.content), True)
+        assert_equal("Link('Quiz', 'quiz', classes='active')" in str(scored.content), True)
         assert_equal(str(expected_score) + " / 20" in str(results(state).content), True)
     assert_equal(state.quiz_attempts, 3)
     invalid = score_quiz(state, *(["Yes"] * 9 + ["Choose an answer"]))
     assert_equal("Please answer all ten" in str(invalid.content), True)
+    assert_equal("classes='panel alert'" in str(invalid.content), True)
+    assert_equal("Link('Quiz', 'quiz', classes='active')" in str(invalid.content), True)
     assert_equal(state.quiz_attempts, 3)
     assert_equal(state.quiz_score, 0)
     assert_equal(state.recommendations, [question[1] for question in QUESTIONS])
@@ -486,6 +568,8 @@ def run_bakery_tests() -> None:
     assert_equal(str(action_plan(state).content).count("Recommended from your quiz"), 6)
     state.tips[0].completed = True
     assert_equal(str(action_plan(state).content).count("Recommended from your quiz"), 5)
+    assert_equal(str(action_plan(state).content).count("classes='panel tip priority'"), 5)
+    assert_equal(str(action_plan(state).content).count("classes='panel tip done'"), 1)
     state.tips[0].completed = False
     score_quiz(state, "Yes", "Yes", "Yes", "No", "Yes", "Yes", "Yes", "No", "Yes", "Yes")
     assert_equal(state.priority_tips, [1])
@@ -496,10 +580,11 @@ def run_bakery_tests() -> None:
     score_quiz(state, *(["Yes"] * 10))
     assert_equal("don't point to any" in str(action_plan(state).content), True)
     score_quiz(state, *(["No"] * 10))
-    reset =reset_progress(state)
+    reset = reset_progress(state)
     assert_equal(reset.state, initial_state())
     assert_equal(reset.state is state, False)
     assert_equal("Progress reset" in str(reset.content), True)
+    assert_equal("site-footer" in str(reset.content), True)
     assert_equal(initial_state().tips[0].completed, False)
 
 
