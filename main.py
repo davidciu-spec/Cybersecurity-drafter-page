@@ -103,7 +103,7 @@ def shell(state: State, title: str, content: list, lead: str = "",
         content (list) - the text and components shown on the page
         lead (str) - a short sentence shown under the heading (empty for none)
         active (str) - the navigation link for this section ("Tools", "Checklist", "Quiz", "About", or "")
-        hero (bool) - whether to show the large home page heading with a quiz button
+        hero (bool) - whether to show the large home page heading
     returns:
         Page - the page with the shared layout
     """
@@ -119,7 +119,6 @@ def shell(state: State, title: str, content: list, lead: str = "",
         heading.append(Div(lead, classes="lead"))
     head_classes = "page-head"
     if hero:
-        heading.append(Button("Take the quiz", "quiz"))
         head_classes = "page-head hero"
     footer = FooterContent(
         Div("Cyber Compass · CISC 106 · by David Ciupei"),
@@ -510,7 +509,7 @@ def run_bakery_tests() -> None:
     assert_equal("site-footer" in str(shell(state, "Example title", []).content), True)
     assert_equal("classes='active'" in str(shell(state, "Example", []).content), False)
     assert_equal("page-head hero" in str(index(state).content), True)
-    assert_equal("Take the quiz" in str(index(state).content), True)
+    assert_equal("Take the quiz" in str(index(state).content), False)
     assert_equal("classes='lead'" in str(index(state).content), True)
     assert_equal(score_band(0), "score-low")
     assert_equal(score_band(9), "score-low")
@@ -596,6 +595,9 @@ if sys.platform != "emscripten":
 
 set_website_title("Cyber Compass | CISC 106")
 set_website_style("none")
+# The site is already dark, so ask the Dark Reader extension not to restyle it
+# (it rewrites colours and breaks the dropdown arrow's position).
+add_website_header('<meta name="darkreader-lock">')
 set_website_framed(False)
 hide_debug_information()
 add_website_css_file("style.css")
