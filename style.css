@@ -1,46 +1,48 @@
 /* Cyber Compass: all site styling.
    Self-contained on purpose: no web fonts, no external CSS or images, so the
-   page only contacts outside services when a check button is pressed. */
+   styling never contacts outside services. */
 
 /* ==========================================================================
    Design tokens
    ========================================================================== */
 :root {
-  /* Colour: Harbor, the default dark theme. The other five themes below
-     redefine these same tokens, so the rest of the file never names a colour. */
+  /* Colour: Harbor, the default dark theme: a deep slate-navy page, clearly
+     raised blue-grey cards, a muted sea-glass teal accent and off-white text.
+     The other five themes below redefine these same tokens, so the rest of
+     the file never names a colour. */
   color-scheme: dark;
-  --bg: #0b1220;
-  --surface: #142238;
-  --surface-2: #1c304a;
-  --border: #304157;
-  --border-strong: #8195ae;
-  --text: #e5edf7;
-  --text-strong: #ffffff;
-  --muted: #9fb0c6;
-  --accent: #7de0cc;
-  --accent-hover: #b4f1e4;
-  --on-accent: #0b1220;
-  --warn: #ffc879;
-  --warn-text: #ffe3b8;
-  --danger: #ff8a8a;
-  --success: #7ee2a8;
+  --bg: #0d1118;
+  --surface: #1f2836;
+  --surface-2: #2a3445;
+  --border: #455166;
+  --border-strong: #8a97a8;
+  --text: #d9e1ea;
+  --text-strong: #eef3f8;
+  --muted: #a0abb9;
+  --accent: #86c9bb;
+  --accent-hover: #aedcd2;
+  --on-accent: #0d1118;
+  --warn: #e3bf86;
+  --warn-text: #efdcb9;
+  --danger: #e89a9a;
+  --success: #8fcfa6;
 
   /* Translucent tints of the colours above, for backgrounds */
-  --accent-soft: rgba(125, 224, 204, 0.12);
-  --warn-soft: rgba(255, 200, 121, 0.1);
-  --danger-soft: rgba(255, 138, 138, 0.1);
-  --success-soft: rgba(126, 226, 168, 0.1);
-  --grid-line: rgba(125, 224, 204, 0.05);
-  --glow: rgba(125, 224, 204, 0.14);
-  --priority-bg: #1c2f3f;
-  --priority-ring: rgba(255, 200, 121, 0.14);
-  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237de0cc' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --accent-soft: rgba(134, 201, 187, 0.12);
+  --warn-soft: rgba(227, 191, 134, 0.09);
+  --danger-soft: rgba(232, 154, 154, 0.09);
+  --success-soft: rgba(143, 207, 166, 0.09);
+  --grid-line: rgba(134, 201, 187, 0.035);
+  --glow: rgba(134, 201, 187, 0.1);
+  --priority-bg: #2c3646;
+  --priority-ring: rgba(227, 191, 134, 0.12);
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2386c9bb' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
   /* Shape and depth */
   --radius: 1rem;
   --radius-sm: 0.5rem;
-  --shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
-  --popover-shadow: 0 18px 44px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+  --popover-shadow: 0 18px 44px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.3);
 
   /* Type: system fonts only */
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -78,62 +80,66 @@
    Harbor is the :root default above.
    ========================================================================== */
 :root[data-theme="nebula"] {
+  /* Dusky plum: a deep, near-neutral page with clearly raised plum-grey
+     cards, a muted lavender accent and off-white text, so nothing glares. */
   color-scheme: dark;
-  --bg: #100d1c;
-  --surface: #1c1733;
-  --surface-2: #261f44;
-  --border: #3a3260;
-  --border-strong: #8d84b8;
-  --text: #ece8fb;
-  --text-strong: #ffffff;
-  --muted: #aba4cc;
-  --accent: #b9a2ff;
-  --accent-hover: #d8cbff;
-  --on-accent: #140f26;
-  --warn: #ffc879;
-  --warn-text: #ffe3b8;
-  --danger: #ff8fa3;
-  --success: #7ee2a8;
-  --accent-soft: rgba(185, 162, 255, 0.14);
-  --warn-soft: rgba(255, 200, 121, 0.1);
-  --danger-soft: rgba(255, 143, 163, 0.1);
-  --success-soft: rgba(126, 226, 168, 0.1);
-  --grid-line: rgba(185, 162, 255, 0.055);
-  --glow: rgba(185, 162, 255, 0.2);
-  --priority-bg: #2a2240;
-  --priority-ring: rgba(255, 200, 121, 0.14);
-  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b9a2ff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  --shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
+  --bg: #0f0d16;
+  --surface: #2a2540;
+  --surface-2: #352f4e;
+  --border: #524a6e;
+  --border-strong: #978fb6;
+  --text: #ebe7f6;
+  --text-strong: #faf8ff;
+  --muted: #b6afcc;
+  --accent: #bba9f2;
+  --accent-hover: #d5cafa;
+  --on-accent: #0f0d16;
+  --warn: #ecc88e;
+  --warn-text: #f6e5c4;
+  --danger: #f0a3b0;
+  --success: #9bdab1;
+  --accent-soft: rgba(187, 169, 242, 0.16);
+  --warn-soft: rgba(236, 200, 142, 0.1);
+  --danger-soft: rgba(240, 163, 176, 0.1);
+  --success-soft: rgba(155, 218, 177, 0.1);
+  --grid-line: rgba(187, 169, 242, 0.04);
+  --glow: rgba(187, 169, 242, 0.13);
+  --priority-bg: #3a3252;
+  --priority-ring: rgba(236, 200, 142, 0.14);
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23bba9f2' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
   --popover-shadow: 0 18px 44px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
-:root[data-theme="ember"] {
+:root[data-theme="forest"] {
+  /* Forest: a deep green-black page with pine-green cards and a soft gold
+     accent. Warnings are orange here so they never look like the accent. */
   color-scheme: dark;
-  --bg: #14100d;
-  --surface: #211a15;
-  --surface-2: #2c231d;
-  --border: #44372d;
-  --border-strong: #a08f80;
-  --text: #f3ebe4;
-  --text-strong: #fff8f2;
-  --muted: #c2b1a2;
-  --accent: #ffaa6b;
-  --accent-hover: #ffc89e;
-  --on-accent: #1a120c;
-  --warn: #ffd75e;
-  --warn-text: #fff0bf;
-  --danger: #ff8a8a;
-  --success: #8ee0a0;
-  --accent-soft: rgba(255, 170, 107, 0.13);
-  --warn-soft: rgba(255, 215, 94, 0.1);
-  --danger-soft: rgba(255, 138, 138, 0.1);
-  --success-soft: rgba(142, 224, 160, 0.1);
-  --grid-line: rgba(255, 170, 107, 0.05);
-  --glow: rgba(255, 170, 107, 0.17);
-  --priority-bg: #2e2617;
-  --priority-ring: rgba(255, 215, 94, 0.14);
-  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffaa6b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  --shadow: 0 14px 30px rgba(0, 0, 0, 0.42);
+  --bg: #0c110e;
+  --surface: #1f2c25;
+  --surface-2: #293830;
+  --border: #46584d;
+  --border-strong: #93a59a;
+  --text: #e7efea;
+  --text-strong: #f8fcf9;
+  --muted: #afbfb5;
+  --accent: #e3c47e;
+  --accent-hover: #efd9a8;
+  --on-accent: #0c110e;
+  --warn: #f0aa74;
+  --warn-text: #f8d8bd;
+  --danger: #f19e9e;
+  --success: #9fd8a8;
+  --accent-soft: rgba(227, 196, 126, 0.15);
+  --warn-soft: rgba(240, 170, 116, 0.1);
+  --danger-soft: rgba(241, 158, 158, 0.1);
+  --success-soft: rgba(159, 216, 168, 0.1);
+  --grid-line: rgba(227, 196, 126, 0.035);
+  --glow: rgba(227, 196, 126, 0.12);
+  --priority-bg: #33372a;
+  --priority-ring: rgba(240, 170, 116, 0.14);
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e3c47e' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
   --popover-shadow: 0 18px 44px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
@@ -177,22 +183,22 @@
   --text: #2e2519;
   --text-strong: #1f180f;
   --muted: #6b5f4e;
-  --accent: #b4501e;
+  --accent: #ac4b1b;
   --accent-hover: #8f3a12;
   --on-accent: #ffffff;
   --warn: #955a06;
   --warn-text: #6b3f05;
   --danger: #b91c1c;
   --success: #3f7d20;
-  --accent-soft: rgba(180, 80, 30, 0.1);
+  --accent-soft: rgba(172, 75, 27, 0.1);
   --warn-soft: rgba(161, 98, 7, 0.08);
   --danger-soft: rgba(185, 28, 28, 0.07);
   --success-soft: rgba(63, 125, 32, 0.08);
-  --grid-line: rgba(180, 80, 30, 0.06);
-  --glow: rgba(180, 80, 30, 0.12);
+  --grid-line: rgba(172, 75, 27, 0.06);
+  --glow: rgba(172, 75, 27, 0.12);
   --priority-bg: #fdf2dc;
   --priority-ring: rgba(161, 98, 7, 0.14);
-  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b4501e' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ac4b1b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   --shadow: 0 14px 30px rgba(46, 37, 25, 0.12);
   --popover-shadow: 0 18px 44px rgba(46, 37, 25, 0.16), 0 2px 6px rgba(46, 37, 25, 0.08);
 }
@@ -245,6 +251,202 @@
 }
 
 /* ==========================================================================
+   Startup loading screen
+   Drafter's page template shows a grey spinner and "Loading, please wait..."
+   while Python starts in the browser, and removes the whole element when it is
+   ready. This file is linked in <head> before the template's own <style>, so
+   every rule starts with "html" to outrank it. theme.js has not run yet at this
+   point, but a small script in the precompiled home page (BOOT_SCRIPT in
+   main.py) sets the saved theme, or the device's light or dark default, on
+   <html> first, so the screen uses that theme's colours.
+   ========================================================================== */
+html #--drafter-initial-loading-white-screen {
+  background:
+    radial-gradient(circle at 50% 42%, var(--glow), transparent 22rem),
+    var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 1rem;
+  gap: 1.5rem;
+  padding: 1rem;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+/* Fallback until a script sets data-theme (for example when Drafter's
+   prerender_initial_page is off): follow a light device setting with the full
+   Daylight palette, so cards, buttons and alerts are light too, not just the
+   page behind them. Keep these values in step with :root[data-theme="daylight"]. */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) {
+    color-scheme: light;
+    --bg: #f4f7fb;
+    --surface: #ffffff;
+    --surface-2: #eef3f8;
+    --border: #d9e2ec;
+    --border-strong: #7a8ba1;
+    --text: #16243a;
+    --text-strong: #0a1424;
+    --muted: #52637a;
+    --accent: #0f766e;
+    --accent-hover: #0b5d57;
+    --on-accent: #ffffff;
+    --warn: #b45309;
+    --warn-text: #7c3a06;
+    --danger: #c02626;
+    --success: #15803d;
+    --accent-soft: rgba(15, 118, 110, 0.1);
+    --warn-soft: rgba(180, 83, 9, 0.08);
+    --danger-soft: rgba(192, 38, 38, 0.07);
+    --success-soft: rgba(21, 128, 61, 0.08);
+    --grid-line: rgba(15, 118, 110, 0.06);
+    --glow: rgba(15, 118, 110, 0.13);
+    --priority-bg: #fff8ec;
+    --priority-ring: rgba(180, 83, 9, 0.14);
+    --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230f766e' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    --shadow: 0 14px 30px rgba(22, 36, 58, 0.12);
+    --popover-shadow: 0 18px 44px rgba(22, 36, 58, 0.16), 0 2px 6px rgba(22, 36, 58, 0.08);
+  }
+}
+
+/* The spinner becomes the Cyber Compass shield inside a radar ring */
+html #--drafter-initial-loading-white-screen .drafter-loading-spinner {
+  position: relative;
+  width: 5rem;
+  height: 5rem;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--accent-soft);
+  animation: none;
+}
+
+/* The shield, breathing gently */
+html #--drafter-initial-loading-white-screen .drafter-loading-spinner::before {
+  content: "";
+  position: absolute;
+  inset: 1.15rem;
+  background: var(--accent);
+  -webkit-mask: var(--icon-shield) center / contain no-repeat;
+  mask: var(--icon-shield) center / contain no-repeat;
+  animation: loader-breathe 1.6s ease-in-out infinite;
+}
+
+/* A ring that ripples outward from the shield */
+html #--drafter-initial-loading-white-screen .drafter-loading-spinner::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  animation: loader-ripple 1.6s ease-out infinite;
+}
+
+/* Hide the template's text (screen readers still announce it) and show the
+   site name and a status line instead */
+html #--drafter-initial-loading-white-screen > div:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0;
+}
+
+html #--drafter-initial-loading-white-screen > div:last-child::before {
+  content: "Cyber Compass";
+  color: var(--text-strong);
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+html #--drafter-initial-loading-white-screen > div:last-child::after {
+  content: "Getting your security toolkit ready\2026";
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+/* An indeterminate progress bar under the text: ::before is the track and
+   ::after the moving highlight, stacked in the same grid cell. Every animation
+   here changes only transform and opacity, which the browser's compositor
+   runs on its own, so the loader never repaints or competes with Python
+   starting up on the main thread. */
+html #--drafter-initial-loading-white-screen {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+}
+
+html #--drafter-initial-loading-white-screen::before,
+html #--drafter-initial-loading-white-screen::after {
+  content: "";
+  grid-area: 3 / 1;
+  height: 0.25rem;
+  border-radius: 999px;
+}
+
+html #--drafter-initial-loading-white-screen::before {
+  width: min(14rem, 70vw);
+  background: var(--accent-soft);
+}
+
+html #--drafter-initial-loading-white-screen::after {
+  width: min(5.6rem, 28vw);
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: loader-slide 1.4s ease-in-out infinite;
+}
+
+/* Fade out when the site is ready (main.py adds .is-leaving). Opacity and
+   transform only, so the fade runs on the compositor too. Clicks pass through
+   to the page while it fades. */
+html #--drafter-initial-loading-white-screen {
+  transition: opacity 0.5s ease;
+}
+
+html #--drafter-initial-loading-white-screen > div {
+  transition: transform 0.5s ease;
+}
+
+html #--drafter-initial-loading-white-screen.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+html #--drafter-initial-loading-white-screen.is-leaving > div {
+  transform: scale(0.96);
+}
+
+@keyframes loader-breathe {
+  50% { transform: scale(0.88); opacity: 0.75; }
+}
+
+@keyframes loader-ripple {
+  from { transform: scale(1); opacity: 0.7; }
+  to { transform: scale(1.7); opacity: 0; }
+}
+
+/* The highlight is 40% of the track, so +-75% of its own width keeps it inside */
+@keyframes loader-slide {
+  from { transform: translateX(-75%); opacity: 0; }
+  25%, 75% { opacity: 1; }
+  to { transform: translateX(75%); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html #--drafter-initial-loading-white-screen .drafter-loading-spinner::before,
+  html #--drafter-initial-loading-white-screen .drafter-loading-spinner::after {
+    animation: none;
+  }
+
+  html #--drafter-initial-loading-white-screen .drafter-loading-spinner::after {
+    opacity: 0;
+  }
+
+  /* A still, centred highlight instead of the sliding one */
+  html #--drafter-initial-loading-white-screen::after {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
    Base
    ========================================================================== */
 html {
@@ -268,6 +470,9 @@ body {
   margin: 0 auto;
   padding: 1.75rem 1.75rem 4rem;
   line-height: 1.65;
+  /* Long words and addresses wrap instead of widening narrow cards
+     (phones with large text). */
+  overflow-wrap: break-word;
 }
 
 /* Drafter wraps every page in this frame; let it fill the body width. */
@@ -469,6 +674,17 @@ a[href^="http"]::after {
   box-shadow: var(--shadow);
 }
 
+/* Fills the gap a lifted tile leaves below it, so a pointer resting near the
+   bottom edge keeps hovering instead of making the tile bob up and down. */
+.tile:hover::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  height: 6px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tile {
     transition: none;
@@ -538,10 +754,6 @@ a[href^="http"]::after {
   --tile-icon: var(--icon-quiz);
 }
 
-.icon-shield {
-  --tile-icon: var(--icon-shield);
-}
-
 .icon-alert {
   --tile-icon: var(--icon-alert);
 }
@@ -593,7 +805,10 @@ button:active {
   transform: translateY(1px);
 }
 
-button:disabled {
+/* private-tools.js marks a busy check button with aria-disabled rather than
+   disabled, so keyboard focus stays on it while the check runs. */
+button:disabled,
+button[aria-disabled="true"] {
   opacity: 0.6;
   cursor: wait;
 }
@@ -735,24 +950,25 @@ progress.progress {
   width: 100%;
   height: 0.75rem;
   overflow: hidden;
-  background: var(--bg);
+  background: var(--surface-2);
   border: 0;
   border-radius: 999px;
-  box-shadow: inset 0 0 0 1px var(--border);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
   color: var(--bar);
   -webkit-appearance: none;
   appearance: none;
 }
 
 progress.progress::-webkit-progress-bar {
-  background: var(--bg);
+  background: var(--surface-2);
   border-radius: 999px;
 }
 
+/* No width transition: Drafter draws a new <progress> on every page, so it
+   would never run. */
 progress.progress::-webkit-progress-value {
   background: var(--bar);
   border-radius: 999px;
-  transition: width 0.4s ease;
 }
 
 progress.progress::-moz-progress-bar {
@@ -760,10 +976,10 @@ progress.progress::-moz-progress-bar {
   border-radius: 999px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  progress.progress::-webkit-progress-value {
-    transition: none;
-  }
+/* On score cards the bar takes the score's colour. This has to target the
+   bar itself, because progress.progress sets its own --bar above. */
+.score-card progress.progress {
+  --bar: var(--score-color);
 }
 
 /* Completed tip: green edge, check mark before the heading, dimmed advice */
@@ -857,7 +1073,6 @@ progress.progress::-moz-progress-bar {
    ========================================================================== */
 .score-card {
   --score-color: var(--accent);
-  --bar: var(--score-color);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -901,10 +1116,6 @@ progress.progress::-moz-progress-bar {
 }
 
 .score-text h2 {
-  margin: 0 0 0.5rem;
-}
-
-.score-text p {
   margin: 0 0 0.5rem;
 }
 
@@ -971,6 +1182,7 @@ ul.sources a {
   position: relative;
   margin: 1rem 0 0;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   color: var(--text);
 }
 
@@ -1073,10 +1285,6 @@ ul.sources a {
   font-size: 0.875rem;
 }
 
-.site-footer p {
-  margin: 0.25rem 0;
-}
-
 /* ==========================================================================
    Small screens
    ========================================================================== */
@@ -1127,8 +1335,10 @@ hr.divider {
   margin-left: 0.5rem;
 }
 
-/* The global button styles are for actions; reset them for the menu. */
-.theme-menu button {
+/* The global button styles are for actions; reset them for the menu.
+   :where() keeps this reset as weak as the global button rule, so
+   .theme-trigger and .theme-option below can still set their own font. */
+:where(.theme-menu) button {
   margin: 0;
   font: inherit;
   text-align: left;
@@ -1390,6 +1600,21 @@ hr.divider {
   }
 }
 
+/* Wider screens: when the links wrap onto a second row, keep the picker at the
+   right end of its row, so its right-aligned menu never opens off the left
+   edge of the screen (tablets in portrait, narrow windows). The brand takes
+   the spare space on the first row instead of pushing with margin-right. */
+@media (min-width: 651px) {
+  .navigation .brand {
+    flex: 1 0 auto;
+    margin-right: 0;
+  }
+
+  .theme-menu {
+    margin-left: auto;
+  }
+}
+
 /* Small screens: the picker sits beside the brand, showing just its dot */
 @media (max-width: 650px) {
   .theme-menu {
@@ -1397,6 +1622,11 @@ hr.divider {
     top: 0;
     right: 0;
     margin: 0;
+  }
+
+  /* Keep the brand's text out from under the picker (about 4rem wide) */
+  .navigation .brand {
+    padding-right: 4.25rem;
   }
 
   .theme-trigger {
@@ -1568,8 +1798,7 @@ ul.clues li::marker {
   font-weight: 700;
 }
 
-.exposure-card h2,
-.device-card label {
+.exposure-card h2 {
   margin-top: 0;
 }
 
@@ -1599,5 +1828,81 @@ ol.steps h3 {
   .message-row {
     flex-direction: column;
     gap: 0;
+  }
+}
+
+/* ==========================================================================
+   Drafter's error page
+   Drafter gives it a light pink background but no text colour, so in a dark
+   theme the light text and links on it would be unreadable.
+   ========================================================================== */
+.drafter-body-- .error-page {
+  color: #2d3748;
+}
+
+.drafter-body-- .error-page a {
+  color: #2b6cb0;
+}
+
+/* ==========================================================================
+   Windows High Contrast and other forced-colour modes
+   The icons are a solid background shown through a mask. Forced colours
+   replace backgrounds with the page colour, which would hide them, so draw
+   them in the text colour instead.
+   ========================================================================== */
+@media (forced-colors: active) {
+  a[href^="http"]::after,
+  .navigation .brand::before,
+  .tile-icon::before,
+  .panel.tip.done h2::before,
+  .panel.alert::before,
+  .private-result[data-state]::before,
+  .theme-chevron,
+  .theme-group-label::before,
+  .theme-check,
+  .theme-device-icon::before,
+  .panel.verdict::before {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+}
+
+/* ==========================================================================
+   Print: dark text on white paper in every theme, without the navigation,
+   theme picker, buttons or shadows. :root[data-theme] outranks the theme
+   blocks above.
+   ========================================================================== */
+@media print {
+  :root,
+  :root[data-theme] {
+    color-scheme: light;
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #ffffff;
+    --border: #999999;
+    --border-strong: #666666;
+    --text: #000000;
+    --text-strong: #000000;
+    --muted: #333333;
+    --accent: #064e49;
+    --accent-hover: #064e49;
+    --accent-soft: transparent;
+    --priority-bg: #ffffff;
+    --glow: transparent;
+    --grid-line: transparent;
+    --shadow: none;
+  }
+
+  .navigation,
+  .theme-menu,
+  button {
+    display: none;
+  }
+
+  .tile,
+  .panel,
+  ol.steps li {
+    box-shadow: none;
+    break-inside: avoid;
   }
 }

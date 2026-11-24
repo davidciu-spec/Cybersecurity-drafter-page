@@ -31,6 +31,9 @@ env:
 
 jobs:
   build:
+    # The github-pages environment only accepts main, so a run started on
+    # another branch would build everything and then fail at the deploy job.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -38,16 +41,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          # Retained for the course diagnostics/commit history below.
-          fetch-depth: 0
+          # The commit history step below shows only the last 50 commits.
+          fetch-depth: 50
+          # Later steps run packages from PyPI; don't leave the token in .git.
+          persist-credentials: false
 
+      # "uv venv --python 3.12" below downloads Python itself when needed.
       - name: Set up uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-
-      - name: Set up Python
-        run: uv python install 3.12
+          # There is no lock file, so key the cache on this workflow (which
+          # lists the packages). Without a glob the cache is never refreshed.
+          cache-dependency-glob: ".github/workflows/deploy.yml"
 
       - name: Find main Python file
         id: main
@@ -160,10 +166,15 @@ jobs:
             --compile
             --output-directory _site
             --production
+            # Without this the static HTML (link previews, the first paint)
+            # says "Drafter App Server" until Python starts in the browser.
+            # Keep it in step with set_website_title in main.py.
+            --site-title "Cyber Compass | CISC 106"
           )
 
+          # "=" keeps a file name that starts with "-" from being read as an option.
           for path in "${ADDITIONAL_PATHS[@]}"; do
-            DRAFTER_RUN+=(--additional-paths "$path")
+            DRAFTER_RUN+=("--additional-paths=$path")
           done
 
           # Keep the course dashboard reachable from Drafter's generated
@@ -186,9 +197,6 @@ jobs:
             "${DRAFTER_RUN[@]}"
           } 2>&1 | tee "$BUILD_LOG"
 
-          # GitHub Pages should serve Drafter's generated static files as-is.
-          touch _site/.nojekyll
-
           mkdir -p _site/dashboard
           cp "$BUILD_LOG" _site/dashboard/build.log
 
@@ -201,14 +209,40 @@ jobs:
           fi
 
           # A failed assert_equal only prints a line; it never raises. Stop
-          # here so a site with failing tests is not deployed. Match only the
-          # failure lines themselves: Drafter prints "FAILURE at line N (...)"
-          # and plain bakery prints "FAILURE - [line N] ...".
-          FAILURE_LINE='^FAILURE( at line [0-9]+ | - \[line [0-9]+\])'
+          # here so a site with failing tests is not deployed. Drafter prints
+          # "FAILURE at line N (...)", or "FAILURE (assert_equal):" when it
+          # can't find the line; plain bakery prints "FAILURE - [line N] ..."
+          # or "FAILURE, predicted answer was ...". The lines after each one
+          # say what was expected and what came back.
+          FAILURE_LINE='^FAILURE( |,|:|$)'
           if grep -Eq "$FAILURE_LINE" "$BUILD_LOG"; then
-            grep -E "$FAILURE_LINE" "$BUILD_LOG" | sed 's/^/::error::/'
+            grep -E -A3 "$FAILURE_LINE" "$BUILD_LOG" | head -60
+            echo "::error::Drafter/Bakery assertions failed (details above)"
             exit 1
           fi
+
+      # Refuse to publish a build that compiled but is not the site: no tests
+      # ran, a file is missing, the home page links stale script versions, or
+      # the prerendered home page is Drafter's error page (Drafter catches a
+      # route that crashes while prerendering, so the build itself passes).
+      - name: Verify build output
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in index.html theme.js private-tools.js style.css; do
+            [[ -s "_site/$f" ]] || { echo "::error::_site/$f is missing or empty"; exit 1; }
+          done
+          for f in theme.js private-tools.js; do
+            h="$(sha256sum "_site/$f" | cut -c1-10)"
+            grep -qF "$f?v=$h" _site/index.html \
+              || { echo "::error::index.html does not load $f?v=$h (prerender off or stale fingerprint)"; exit 1; }
+          done
+          if grep -q 'class="error-page"' _site/index.html; then
+            echo "::error::The prerendered home page is a Drafter error page"
+            exit 1
+          fi
+          grep -Eq '^(SUCCESS|TEST PASSED)' _site/dashboard/tests.txt \
+            || { echo "::error::No test assertions ran during the build"; exit 1; }
 
       # Speed up the first page load. By default the browser installs Drafter
       # from PyPI: a ~6 MB wheel that is mostly JavaScript the browser never
@@ -237,7 +271,7 @@ jobs:
             --python "$DIAGNOSTIC_VENV/bin/python" \
             "drafter==$VERSION" bakery
 
-          python - "$RUNTIME_DIR" "$VERSION" <<'PY'
+          "$DIAGNOSTIC_VENV/bin/python" - "$RUNTIME_DIR" "$VERSION" <<'PY'
           import json
           import re
           import sys
@@ -295,7 +329,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
+          "$DIAGNOSTIC_VENV/bin/python" - <<'PY'
           import base64
           import json
           import re
@@ -388,10 +422,15 @@ jobs:
             "${PYTHON_FILES[@]}" \
             --exit-zero \
             2>&1 | tee _site/dashboard/lint.txt
+      # DRAFTER_SKIP and timeout are only here in case a tool ever runs
+      # main.py: its start_server would otherwise block until the job times
+      # out, which continue-on-error does not cover.
       - name: Run type checker
         id: typecheck
         continue-on-error: true
         shell: bash
+        env:
+          DRAFTER_SKIP: "true"
         run: |
           set -o pipefail
 
@@ -412,7 +451,7 @@ jobs:
           INI
           fi
 
-          "$DIAGNOSTIC_VENV/bin/python" -m mypy \
+          timeout 120 "$DIAGNOSTIC_VENV/bin/python" -m mypy \
             --config-file "$MYPY_CONFIG" \
             "$MAIN_FILE" \
             2>&1 | tee _site/dashboard/type.txt
@@ -425,27 +464,27 @@ jobs:
         id: drafter_analysis
         continue-on-error: true
         shell: bash
+        env:
+          DRAFTER_SKIP: "true"
         run: |
           set -o pipefail
           MAIN_FILE="${{ steps.main.outputs.main_file }}"
           mkdir -p _site/dashboard/analysis
-          "$DIAGNOSTIC_VENV/bin/analyze_drafter_site" "$MAIN_FILE" \
+          timeout 120 "$DIAGNOSTIC_VENV/bin/analyze_drafter_site" "$MAIN_FILE" \
             --output-dir _site/dashboard/analysis \
             --no-stdout \
             2>&1 | tee _site/dashboard/analysis.log
 
       - name: Record commit history
-        if: ${{ !cancelled() }}
         shell: bash
         run: |
           # Only the deployed branch: --all would also publish unmerged branches.
           git log --oneline --decorate --graph -n 50 > _site/dashboard/commits.txt
 
       - name: Create deployment dashboard
-        if: ${{ !cancelled() }}
         shell: bash
         run: |
-          python - <<'PY'
+          "$DIAGNOSTIC_VENV/bin/python" - <<'PY'
           from html import escape
           from pathlib import Path
 
@@ -498,7 +537,7 @@ jobs:
           PY
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
         with:
           path: ./_site
 
@@ -516,4 +555,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

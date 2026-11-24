@@ -1,3 +1,5 @@
+import hashlib
+import os
 import random
 import sys
 from dataclasses import dataclass
@@ -698,7 +700,7 @@ def index(state: State) -> Page:
     returns:
         Page - the home page with the six cards
     """
-    return shell(state, "Cyber Compass", [
+    page = shell(state, "Cyber Compass", [
         Div(
             tile("key", "01", "Password & breach tools", "Check passwords and email exposure.", "password_tools"),
             tile("alert", "02", "After a breach", "Clear next steps when your data shows up in a leak.",
@@ -710,6 +712,105 @@ def index(state: State) -> Page:
             tile("device", "06", "Device setup", "Lock down your laptop or phone, step by step.", "device_guide"),
             classes="tiles"),
     ], "Learn practical cybersecurity habits, one small step at a time.", hero=True)
+    # Only the copy of the home page written into the HTML file needs
+    # BOOT_SCRIPT. In the browser it has already run by the time Python draws
+    # this page (and the add_website_js code at the end covers any other start).
+    if sys.platform != "emscripten":
+        page.content.insert(0, RawHTML(BOOT_SCRIPT))
+    return page
+
+
+def asset_version(filename: str) -> str:
+    """
+    Creates a short fingerprint of a file next to this program, which changes
+    whenever the file's contents change
+    args:
+        filename (str) - the name of the file, such as "theme.js"
+    returns:
+        str - the first 10 characters of the file's SHA-256 hash, or "" if the
+              file cannot be read (as when this code runs in the browser)
+    """
+    # In the visitor's browser the files are on the web server, not next to
+    # this program, so there is nothing to read.
+    if sys.platform == "emscripten":
+        return ""
+    try:
+        folder = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(folder, filename), "rb") as file:
+            return hashlib.sha256(file.read()).hexdigest()[:10]
+    except (NameError, OSError):
+        return ""
+
+
+def asset_url(filename: str) -> str:
+    """
+    Creates the address the browser should load a file from
+    args:
+        filename (str) - the name of the file, such as "theme.js"
+    returns:
+        str - the file name with its fingerprint, such as "theme.js?v=1a2b3c4d5e",
+              or just the file name when there is no fingerprint
+    """
+    version = asset_version(filename)
+    if version:
+        return filename + "?v=" + version
+    return filename
+
+
+# Sets up the page before the startup loading screen is first drawn. Drafter
+# writes the home page into the HTML file right after the loading screen, so
+# BOOT_SCRIPT (below) runs this while the page is still loading, long before
+# Python has started.
+# 1. Adds the darkreader-lock tag straight away. Otherwise the Dark Reader
+#    extension darkens the light loading screen, then lets go once Python adds
+#    the tag, and the page jumps to bright white.
+# 2. Applies the saved colour theme, or the device's light or dark default,
+#    the same way theme.js does. Keep the theme ids (and the renamed "ember")
+#    in step with THEMES and RENAMED there.
+# 3. Loads theme.js and private-tools.js with a fingerprint of their contents
+#    in the address (theme.js?v=...). The browser treats a changed file as a
+#    new address and downloads it, instead of reusing an old copy it saved.
+#    Files that Drafter adds itself (add_website_js_file) load after the page
+#    has finished loading, where even a hard reload can reuse the saved copy.
+#    On the local server the address gets the current time instead, because
+#    the server works out the fingerprints only once, when it starts, so an
+#    edited file would otherwise keep its old address until a restart.
+# It runs once per page load. Drafter's page swap runs scripts in the new
+# page, so showing the home page again would otherwise add the tags again
+# and reset a theme the browser could not save. Both scripts also handle
+# Drafter redrawing the page later.
+# The fingerprints come from this file running on a computer (the local
+# server, or the deployment build), which is what writes the home page.
+BOOT_JS = """
+(() => {
+  if (window.cyberCompassBoot) return;
+  window.cyberCompassBoot = true;
+  if (!document.querySelector('meta[name="darkreader-lock"]')) {
+    const lock = document.createElement('meta');
+    lock.name = 'darkreader-lock';
+    document.head.append(lock);
+  }
+  let id = null;
+  try { id = localStorage.getItem('cyber-compass.theme'); } catch (_) {}
+  if (id === 'ember') id = 'forest';
+  if (!/^(daylight|sand|lilac|harbor|nebula|forest)$/.test(id)) {
+    id = matchMedia('(prefers-color-scheme: dark)').matches ? 'harbor' : 'daylight';
+  }
+  document.documentElement.dataset.theme = id;
+  const local = /^(localhost|127\\.0\\.0\\.1|\\[::1\\])$/.test(location.hostname);
+  for (const src of ['THEME_URL', 'TOOLS_URL']) {
+    const script = document.createElement('script');
+    script.src = local ? src.split('?')[0] + '?v=' + Date.now() : src;
+    document.head.append(script);
+  }
+})();
+"""
+BOOT_JS = BOOT_JS.replace("THEME_URL", asset_url("theme.js"))
+BOOT_JS = BOOT_JS.replace("TOOLS_URL", asset_url("private-tools.js"))
+# The closing tag is split in two on purpose: Drafter places this whole file
+# inside a <script> tag in the page, and a closing script tag written out in
+# full anywhere in this file would end that tag early and cut the code short.
+BOOT_SCRIPT = "<script>" + BOOT_JS + "<" + "/script>"
 
 
 @route
@@ -729,7 +830,7 @@ def password_tools(state: State) -> Page:
         RawHTML('''<section class="panel private-tools">
         <label for="private-password">Password to check</label>
         <input id="private-password" type="password" maxlength="256"
-          autocomplete="new-password" spellcheck="false">
+          autocomplete="new-password" spellcheck="false" aria-describedby="password-result">
         <p>Press Enter or Check password. Only the first five characters
         of its SHA-1 hash go to Have I Been Pwned. The field clears immediately.</p>
         <button type="button" data-private="password">Check password</button>
@@ -763,7 +864,8 @@ def email_content() -> list:
         "This free check uses XposedOrNot, a separate database from Have I Been Pwned.",
         RawHTML('''<section class="panel private-tools">
         <label for="private-email">Your email address</label>
-        <input id="private-email" type="email" maxlength="254" autocomplete="off">
+        <input id="private-email" type="email" maxlength="254" autocomplete="off"
+          aria-describedby="email-result">
         <label class="consent"><input id="private-consent" type="checkbox">
         I own this address or have permission to check it. I agree to send the full
         address to XposedOrNot for this search.</label>
@@ -786,6 +888,19 @@ def breach_link() -> Div:
     """
     return Div(Span("Found a match?", classes="next-step-title"),
                Link("See what to do after a breach →", "breach_steps"), classes="panel next-step")
+
+
+def source_link(name: str, url: str) -> Link:
+    """
+    Creates a link to an outside website that opens in a new tab
+    args:
+        name (str) - the text of the link
+        url (str) - the address of the outside page
+    returns:
+        Link - the link; a new tab keeps this site open, because leaving it
+               would lose the checklist and quiz progress kept in the page
+    """
+    return Link(name, url, target="_blank", rel="noopener noreferrer")
 
 
 @route
@@ -828,7 +943,11 @@ def checklist_page(state: State) -> Page:
     for position, tip in enumerate(state.tips):
         if tip.completed:
             completed += 1
-        field = CheckBox("tip" + str(position), tip.completed)
+        # Drafter labels each field with its name ("tip0") for screen readers
+        # unless it is given an "aria-label", so give it the visible text. It has
+        # to be written with a hyphen: Drafter's own label wins over aria_label.
+        field = CheckBox("tip" + str(position), tip.completed,
+                         **{"aria-label": "I have done this: " + tip.title})
         classes = "panel tip"
         name = tip.title
         if position in FOCUS_TIPS.get(state.focus, []):
@@ -855,12 +974,14 @@ def checklist_page(state: State) -> Page:
                       ". Change your focus and save to update the stars.")
     else:
         focus_note = "Choose a focus and save to star the habits that matter most for it."
-    focus_field = SelectBox("focus", list(FOCUS_CHOICES), state.focus or FOCUS_CHOICES[0])
+    focus_field = SelectBox("focus", list(FOCUS_CHOICES), state.focus or FOCUS_CHOICES[0],
+                            **{"aria-label": "My current focus"})
     focus_card = Div(Label("My current focus", focus_field), focus_field,
                      Div(focus_note, classes="focus-note"), classes="panel focus-card")
     progress = Div(Div(str(completed) + " of " + str(len(state.tips)) + " habits completed",
                        classes="progress-label"),
-                   ProgressBar(completed, max=len(state.tips), classes="progress"),
+                   ProgressBar(completed, max=len(state.tips), classes="progress",
+                               aria_label="Habits completed"),
                    Div("Progress lasts for this open session.", classes="progress-note"),
                    classes="panel progress-card")
     return shell(state, "Your safety checklist", [
@@ -870,10 +991,13 @@ def checklist_page(state: State) -> Page:
 
 
 @route
-def save_checklist(state: State, tip0: bool, tip1: bool, tip2: bool,
-                   tip3: bool, tip4: bool, tip5: bool, focus: str) -> Page:
+def save_checklist(state: State, tip0: bool = False, tip1: bool = False, tip2: bool = False,
+                   tip3: bool = False, tip4: bool = False, tip5: bool = False,
+                   focus: str = "") -> Page:
     """
-    Saves the completed safety tips and the user's selected focus
+    Saves the completed safety tips and the user's selected focus. Reloading
+    the page sends no form values (the focus box always sends one), so then
+    the checklist is shown without saving anything.
     args:
         state (State) - the current session state to update
         tip0 (bool) - whether the unique passwords tip has been completed
@@ -882,10 +1006,13 @@ def save_checklist(state: State, tip0: bool, tip1: bool, tip2: bool,
         tip3 (bool) - whether the software updates tip has been completed
         tip4 (bool) - whether the reliable backups tip has been completed
         tip5 (bool) - whether the account recovery tip has been completed
-        focus (str) - the selected focus: Accounts, Devices, or Awareness, or "Choose a focus" to clear it
+        focus (str) - the selected focus: Accounts, Devices, or Awareness, or "Choose a focus" to
+                      clear it ("" when the page was reloaded)
     returns:
         Page - the checklist page with the updated progress
     """
+    if not focus:
+        return checklist_page(state)
     choices = [tip0, tip1, tip2, tip3, tip4, tip5]
     for position, tip in enumerate(state.tips):
         tip.completed = choices[position]
@@ -905,9 +1032,24 @@ def quiz(state: State) -> Page:
     returns:
         Page - the quiz page with answer selections and a submit button
     """
+    return quiz_page(state, [])
+
+
+def quiz_page(state: State, answers: list[str]) -> Page:
+    """
+    Creates the quiz page, keeping any answers the user already chose
+    args:
+        state (State) - the current session state
+        answers (list[str]) - the answers chosen so far, in question order ([] for none)
+    returns:
+        Page - the quiz page with answer selections and a submit button
+    """
     content = ["Answer honestly. This is a habit check, not a technical security audit."]
     for position, question in enumerate(QUESTIONS):
-        field = SelectBox("q" + str(position), list(CHOICES))
+        answer = CHOICES[0]
+        if position < len(answers) and answers[position] in CHOICES:
+            answer = answers[position]
+        field = SelectBox("q" + str(position), list(CHOICES), answer, **{"aria-label": question[0]})
         content.append(Div(Span(str(position + 1), classes="q-number"),
                            Label(question[0], field), field, classes="panel question"))
     return shell(state, "How are your everyday habits?", content + [Button("Get my action plan", "score_quiz")],
@@ -915,8 +1057,8 @@ def quiz(state: State) -> Page:
 
 
 @route
-def score_quiz(state: State, q0: str, q1: str, q2: str, q3: str, q4: str,
-               q5: str, q6: str, q7: str, q8: str, q9: str) -> Page:
+def score_quiz(state: State, q0: str = "", q1: str = "", q2: str = "", q3: str = "", q4: str = "",
+               q5: str = "", q6: str = "", q7: str = "", q8: str = "", q9: str = "") -> Page:
     """
     Checks the answers and updates the quiz score, attempts, and recommendations
     args:
@@ -931,15 +1073,22 @@ def score_quiz(state: State, q0: str, q1: str, q2: str, q3: str, q4: str,
         q7 (str) - the answer about locking devices
         q8 (str) - the answer about reviewing app permissions and removing unused apps
         q9 (str) - the answer about knowing how to recover important accounts
+        (each answer is "" when the page was reloaded, which sends no form values)
     returns:
         Page - the results page, or the quiz with a message if any answer is invalid
     """
     answers = [q0, q1, q2, q3, q4, q5, q6, q7, q8, q9]
-    for answer in answers:
+    if answers == [""] * len(QUESTIONS):
+        return quiz(state)
+    missing = []
+    for position, answer in enumerate(answers):
         if answer not in CHOICES[1:]:
-            page = quiz(state)
-            page.content.insert(3, Div("Please answer all ten questions before submitting.", classes="panel alert"))
-            return page
+            missing.append(str(position + 1))
+    if missing:
+        page = quiz_page(state, answers)
+        page.content.insert(3, Div("Please answer all ten questions before submitting. Still to answer: " +
+                                   ", ".join(missing) + ".", classes="panel alert"))
+        return page
     state.quiz_score = 0
     state.recommendations = []
     state.priority_tips = []
@@ -970,9 +1119,10 @@ def results(state: State) -> Page:
     if state.quiz_attempts == 0:
         return shell(state, "Your action plan", ["Take the quiz to build your plan.", Button("Start quiz", "quiz")],
                      "Your results will appear here after the quiz.", "Quiz")
-    if state.quiz_score >= 16:
+    band = score_band(state.quiz_score, 20)
+    if band == "score-high":
         message = "A solid foundation. Keep these habits consistent."
-    elif state.quiz_score >= 10:
+    elif band == "score-mid":
         message = "You have a start. Choose one improvement to make today."
     else:
         message = "Start with your email account: a unique password and MFA."
@@ -983,8 +1133,8 @@ def results(state: State) -> Page:
         Div(Header(str(state.quiz_score) + " / 20 habit points", 2), message,
             "This score reflects your answers; it does not measure your risk of being hacked.",
             classes="score-text"),
-        ProgressBar(state.quiz_score, max=20, classes="progress"),
-        classes="panel score-card " + score_band(state.quiz_score, 20))
+        ProgressBar(state.quiz_score, max=20, classes="progress", aria_label="Habit points"),
+        classes="panel score-card " + band)
     return shell(state, "Your next steps", [
         score_card, Header("Your next steps", 2), NumberedList(suggestions, classes="steps"),
         Button("Turn advice into action", "action_plan"), Button("Retake quiz", "quiz", classes="secondary"),
@@ -1084,12 +1234,12 @@ def phish_spotter(state: State) -> Page:
 
 
 @route
-def check_phish(state: State, guess: str) -> Page:
+def check_phish(state: State, guess: str = "") -> Page:
     """
     Records the user's answer for the current message and updates the score
     args:
         state (State) - the current session state to update
-        guess (str) - the user's answer: "Phishing" or "Legitimate"
+        guess (str) - the user's answer: "Phishing" or "Legitimate" ("" when the page was reloaded)
     returns:
         Page - the current message with feedback, or the unchanged page if the answer is invalid
     """
@@ -1169,7 +1319,7 @@ def phish_summary(state: State) -> Page:
             classes="score-number"),
         Div(Header(str(state.phish_score) + " of " + str(total) + " spotted correctly", 2), message,
             classes="score-text"),
-        ProgressBar(state.phish_score, max=total, classes="progress"),
+        ProgressBar(state.phish_score, max=total, classes="progress", aria_label="Messages spotted correctly"),
         classes="panel score-card " + band)
     return shell(state, "Your phishing score", [
         score_card,
@@ -1177,7 +1327,7 @@ def phish_summary(state: State) -> Page:
         BulletedList(list(PHISH_RED_FLAGS), classes="clues"),
         Header("Got a real one?", 2),
         "Don't reply or click. Use your email app's report option, tell your school's IT team, then delete it.",
-        BulletedList([Link("CISA: Recognize and report phishing",
+        BulletedList([source_link("CISA: Recognize and report phishing",
                            "https://www.cisa.gov/secure-our-world/recognize-and-report-phishing")],
                      classes="sources"),
         Button("Tick off phishing awareness", "complete_phishing"),
@@ -1214,11 +1364,14 @@ def breach_steps(state: State) -> Page:
     """
     boxes = []
     for key, label, heading in EXPOSURE_TYPES:
-        field = CheckBox(key, key in state.exposures)
+        field = CheckBox(key, key in state.exposures, **{"aria-label": label})
         boxes.append(Div(field, Label(label, field), classes="tip-check"))
+    # "submitted" tells breach_plan that this button sent the ticks, as
+    # opposed to a reload, which sends no form values at all.
     content = [
         Div(Header("What was exposed?", 2), "Tick everything the breach notice or the Tools check mentioned.",
-            *boxes, Button("Show my steps", "breach_plan"), classes="panel exposure-card"),
+            *boxes, Button("Show my steps", "breach_plan", [Argument("submitted", "yes")]),
+            classes="panel exposure-card"),
         Header("Start here", 2),
         guide_steps(list(FIRST_STEPS)),
     ]
@@ -1229,9 +1382,9 @@ def breach_steps(state: State) -> Page:
     content += [
         Header("Official help", 2),
         BulletedList([
-            Link("IdentityTheft.gov: Data breaches", "https://www.identitytheft.gov/databreach"),
-            Link("AnnualCreditReport.com: free credit reports", "https://www.annualcreditreport.com/"),
-            Link("CISA: Turn on multifactor authentication", "https://www.cisa.gov/secure-our-world/turn-mfa"),
+            source_link("IdentityTheft.gov: Data breaches", "https://www.identitytheft.gov/databreach"),
+            source_link("AnnualCreditReport.com: free credit reports", "https://www.annualcreditreport.com/"),
+            source_link("CISA: Turn on multifactor authentication", "https://www.cisa.gov/secure-our-world/turn-mfa"),
         ], classes="sources"),
         Button("Check a password or email", "password_tools", classes="secondary"),
     ]
@@ -1240,7 +1393,8 @@ def breach_steps(state: State) -> Page:
 
 
 @route
-def breach_plan(state: State, password: bool, email: bool, financial: bool, identity: bool) -> Page:
+def breach_plan(state: State, password: bool = False, email: bool = False, financial: bool = False,
+                identity: bool = False, submitted: str = "") -> Page:
     """
     Saves which kinds of data were exposed and shows the matching steps
     args:
@@ -1249,9 +1403,12 @@ def breach_plan(state: State, password: bool, email: bool, financial: bool, iden
         email (bool) - whether an email address was exposed
         financial (bool) - whether card or bank details were exposed
         identity (bool) - whether an ID number was exposed
+        submitted (str) - "yes" from the Show my steps button, or "" when the page was reloaded
     returns:
         Page - the breach page with the matching steps, or a message if nothing was ticked
     """
+    if not submitted:
+        return breach_steps(state)
     choices = [password, email, financial, identity]
     state.exposures = []
     for position, (key, label, heading) in enumerate(EXPOSURE_TYPES):
@@ -1273,7 +1430,7 @@ def device_guide(state: State) -> Page:
     returns:
         Page - the device page with a device selection and the matching steps
     """
-    field = SelectBox("platform", list(PLATFORMS), state.platform or PLATFORMS[0])
+    field = SelectBox("platform", list(PLATFORMS), state.platform or PLATFORMS[0], **{"aria-label": "My device"})
     content = [Div(Label("My device", field), field, Button("Show steps", "device_steps"),
                    classes="panel device-card")]
     if not state.platform:
@@ -1287,7 +1444,7 @@ def device_guide(state: State) -> Page:
     content.append(guide_steps(DEVICE_GUIDES[state.platform]))
     sources = []
     for name, url in DEVICE_SOURCES[state.platform]:
-        sources.append(Link(name, url))
+        sources.append(source_link(name, url))
     content += [
         Header("Official guides", 2),
         BulletedList(sources, classes="sources"),
@@ -1299,12 +1456,13 @@ def device_guide(state: State) -> Page:
 
 
 @route
-def device_steps(state: State, platform: str) -> Page:
+def device_steps(state: State, platform: str = "") -> Page:
     """
     Saves the chosen device and shows its setup steps
     args:
         state (State) - the current session state to update
-        platform (str) - the chosen device: Windows, Mac, iPhone, or Android, or "Choose a device" to clear it
+        platform (str) - the chosen device: Windows, Mac, iPhone, or Android, or "Choose a device" to
+                         clear it ("" when the page was reloaded)
     returns:
         Page - the device page with the matching steps
     """
@@ -1331,7 +1489,9 @@ def about(state: State) -> Page:
         "Cyber Compass does not store any of your data. There are no accounts, databases, cookies or "
         "analytics. Checklist and quiz progress only last while the page is open and clear when you reload. "
         "The one thing remembered is the colour theme you pick, saved in your own browser.",
-        "The site only contacts outside services when you press a check button on the Tools page:",
+        "To run in your browser, the site downloads Python (Pyodide) from the jsDelivr network when it "
+        "opens. After that, it only contacts outside services when you press a check button on the "
+        "Tools page:",
         Div(Header("Password check: Have I Been Pwned", 3),
             "Your password is hashed in your browser, and only the first five characters of that hash are "
             "sent to the Pwned Passwords API. The API sends back a list of matching hashes and the comparison "
@@ -1345,13 +1505,13 @@ def about(state: State) -> Page:
         "proof of safety. Change exposed or reused passwords, enable MFA, and review account activity.",
         Header("Sources", 2),
         BulletedList([
-            Link("Have I Been Pwned API documentation", "https://haveibeenpwned.com/API/V3"),
-            Link("XposedOrNot free API", "https://xposedornot.com/api_doc"),
-            Link("CISA Secure Our World", "https://www.cisa.gov/secure-our-world"),
-            Link("CISA: Recognize and report phishing",
+            source_link("Have I Been Pwned API documentation", "https://haveibeenpwned.com/API/V3"),
+            source_link("XposedOrNot free API", "https://xposedornot.com/api_doc"),
+            source_link("CISA Secure Our World", "https://www.cisa.gov/secure-our-world"),
+            source_link("CISA: Recognize and report phishing",
                  "https://www.cisa.gov/secure-our-world/recognize-and-report-phishing"),
-            Link("IdentityTheft.gov: Data breaches", "https://www.identitytheft.gov/databreach"),
-            Link("FBI online safety advice", "https://www.fbi.gov/how-we-can-help-you/online-safety/"
+            source_link("IdentityTheft.gov: Data breaches", "https://www.identitytheft.gov/databreach"),
+            source_link("FBI online safety advice", "https://www.fbi.gov/how-we-can-help-you/online-safety/"
                  "stay-safe-online-simple-tips-for-adults"),
         ], classes="sources"),
         Button("Clear checklist and quiz progress", "reset_progress", classes="danger"),
@@ -1398,6 +1558,34 @@ def run_bakery_tests() -> None:
     assert_equal("site-footer" in str(shell(state, "Example title", []).content), True)
     assert_equal("classes='active'" in str(shell(state, "Example", []).content), False)
     assert_equal("page-head hero" in str(index(state).content), True)
+    assert_equal(index(state).content[0], RawHTML(BOOT_SCRIPT))
+    assert_equal(BOOT_SCRIPT.endswith("<" + "/script>"), True)
+    # It must run only once per page load, however often the home page is shown
+    assert_equal("if (window.cyberCompassBoot) return;" in BOOT_SCRIPT, True)
+    assert_equal(asset_url("theme.js"), "theme.js?v=" + asset_version("theme.js"))
+    assert_equal(asset_url("no-such-file.js"), "no-such-file.js")
+    assert_equal(len(asset_version("theme.js")), 10)
+    assert_equal(asset_version("no-such-file.js"), "")
+    assert_equal("'theme.js?v=" + asset_version("theme.js") + "'" in BOOT_SCRIPT, True)
+    assert_equal("'private-tools.js?v=" + asset_version("private-tools.js") + "'" in BOOT_SCRIPT, True)
+    # Drafter puts this file inside a <script> tag, so a full closing script tag
+    # anywhere in it would cut the site's code short in the browser
+    # "<" "!--" is just as harmful: after it, a later closing tag no longer ends the script.
+    with open(__file__, encoding="utf-8") as source:
+        code = source.read().lower()
+    assert_equal(("<" + "/script") in code, False)
+    assert_equal(("<" + "!--") in code, False)
+    # BOOT_SCRIPT applies themes before theme.js loads, so both must know the same themes
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "theme.js"), encoding="utf-8") as source:
+        theme_code = source.read()
+    theme_ids = []
+    for line in theme_code.splitlines():
+        if line.strip().startswith("{ id: '"):
+            theme_ids.append(line.split("'")[1])
+    assert_equal(len(theme_ids), 6)
+    assert_equal("(" + "|".join(theme_ids) + ")" in BOOT_SCRIPT, True)
+    assert_equal("ember: 'forest'" in theme_code, True)
+    assert_equal("id === 'ember') id = 'forest'" in BOOT_SCRIPT, True)
     assert_equal("Take the quiz" in str(index(state).content), False)
     assert_equal("classes='lead'" in str(index(state).content), True)
     assert_equal(score_band(0, 20), "score-low")
@@ -1426,6 +1614,8 @@ def run_bakery_tests() -> None:
     assert_equal("Take the quiz" in str(results(state).content), True)
     assert_equal("Your data" in str(about(state).content), True)
     assert_equal("colour theme you pick" in str(about(state).content), True)
+    assert_equal("Pyodide" in str(about(state).content), True)
+    assert_equal(str(about(state).content).count("target='_blank'"), 6)
     saved = save_checklist(state, True, False, True, False, True, False, "Devices")
     assert_equal([tip.completed for tip in saved.state.tips], [True, False, True, False, True, False])
     assert_equal(saved.state.focus, "Devices")
@@ -1445,6 +1635,14 @@ def run_bakery_tests() -> None:
     assert_equal("★ Account recovery" in str(accounts.content), True)
     assert_equal(save_checklist(accounts.state, False, False, False, False, False, False,
                                 "Choose a focus").state.focus, "")
+    awareness = save_checklist(initial_state(), False, False, False, False, False, False, "Awareness")
+    assert_equal(sum(str(awareness.content).count("★ " + tip.title) for tip in awareness.state.tips), 1)
+    assert_equal("★ Phishing awareness" in str(awareness.content), True)
+    assert_equal("aria-label='I have done this: Unique passwords'" in str(awareness.content), True)
+    # Reloading after saving sends no form values: keep the saved progress
+    assert_equal([tip.completed for tip in save_checklist(state).state.tips],
+                 [True, False, True, False, True, False])
+    assert_equal(state.focus, "Devices")
     save_checklist(state, False, False, False, False, False, False, "Invalid")
     assert_equal(state.focus, "Devices")
     assert_equal([tip.completed for tip in state.tips], [False] * 6)
@@ -1455,15 +1653,26 @@ def run_bakery_tests() -> None:
         assert_equal(scored.state.quiz_score, expected_score)
         assert_equal(len(scored.state.recommendations), expected_count)
         assert_equal("panel score-card " + band in str(scored.content), True)
+        assert_equal({"score-high": "A solid foundation", "score-mid": "You have a start",
+                      "score-low": "Start with your email account"}[band] in str(scored.content), True)
         assert_equal("Link('Quiz', 'quiz', classes='active')" in str(scored.content), True)
         assert_equal(str(expected_score) + " / 20" in str(results(state).content), True)
     assert_equal(state.quiz_attempts, 3)
     invalid = score_quiz(state, *(["Yes"] * 9 + ["Choose an answer"]))
     assert_equal("Please answer all ten" in str(invalid.content), True)
+    assert_equal("Still to answer: 10." in str(invalid.content), True)
+    # The answers already chosen stay chosen
+    assert_equal(str(invalid.content).count("'Yes', aria-label="), 9)
+    assert_equal("SelectBox('q9', ['Choose an answer', 'Yes', 'Sometimes', 'No'], 'Choose an answer'"
+                 in str(invalid.content), True)
+    # Reloading the results sends no answers: show the quiz without a warning
+    assert_equal("Please answer" in str(score_quiz(state).content), False)
+    assert_equal("Get my action plan" in str(score_quiz(state).content), True)
     assert_equal("classes='panel alert'" in str(invalid.content), True)
     assert_equal("Link('Quiz', 'quiz', classes='active')" in str(invalid.content), True)
     assert_equal(state.quiz_attempts, 3)
     assert_equal(state.quiz_score, 0)
+    assert_equal("Start with your email account" in str(results(state).content), True)
     assert_equal(state.recommendations, [question[1] for question in QUESTIONS])
     assert_equal(state.priority_tips, [0, 1, 2, 3, 4, 5])
     assert_equal("priority" in str(checklist(state).content), False)
@@ -1518,6 +1727,13 @@ def run_new_page_tests() -> None:
     assert_equal(len(MESSAGES), 30)
     for message in MESSAGES:
         assert_equal(len(message.clues), 3)
+    # The answer key: which practice messages are phishing
+    assert_equal([position for position, message in enumerate(MESSAGES) if message.is_phish],
+                 [0, 2, 4, 5, 6, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20])
+    # Reloading after an answer sends no guess: show the message, score nothing
+    reloaded = initial_state()
+    assert_equal(check_phish(reloaded).state.phish_guess, "")
+    assert_equal(reloaded.phish_score, 0)
     # Every round shows each message exactly once, in a random order
     assert_equal(sorted(state.phish_order), list(range(30)))
     assert_equal(sorted(shuffled_order()), list(range(30)))
@@ -1604,16 +1820,29 @@ def run_new_page_tests() -> None:
     assert_equal("Start here" in str(breach.content), True)
     assert_equal(str(breach.content).count("CheckBox("), 4)
     assert_equal("If a password was exposed" in str(breach.content), False)
-    plan = breach_plan(state, True, False, False, True)
+    assert_equal("Argument('submitted', 'yes')" in str(breach.content), True)
+    plan = breach_plan(state, True, False, False, True, "yes")
     assert_equal(plan.state.exposures, ["password", "identity"])
     assert_equal("If a password was exposed" in str(plan.content), True)
     assert_equal("If an ID number was exposed" in str(plan.content), True)
     assert_equal("If card or bank details were exposed" in str(plan.content), False)
     assert_equal("Freeze your credit" in str(plan.content), True)
     assert_equal("CheckBox('password', True" in str(plan.content), True)
-    assert_equal("CheckBox('email')" in str(plan.content), True)
+    assert_equal("CheckBox('email', aria-label='My email address')" in str(plan.content), True)
     assert_equal("classes='panel alert'" in str(plan.content), False)
-    empty = breach_plan(state, False, False, False, False)
+    # Every kind of data has its own steps, so ticking any of them works
+    for position, (key, label, heading) in enumerate(EXPOSURE_TYPES):
+        ticks = [False] * len(EXPOSURE_TYPES)
+        ticks[position] = True
+        single = breach_plan(initial_state(), *ticks, "yes")
+        assert_equal(single.state.exposures, [key])
+        assert_equal(heading in str(single.content), True)
+        assert_equal(BREACH_STEPS[key][0].title in str(single.content), True)
+    # Reloading the page sends no form values: show the page, change nothing
+    reloaded = breach_plan(plan.state)
+    assert_equal(reloaded.state.exposures, ["password", "identity"])
+    assert_equal("Tick at least one" in str(reloaded.content), False)
+    empty = breach_plan(state, False, False, False, False, "yes")
     assert_equal(empty.state.exposures, [])
     assert_equal("Tick at least one" in str(empty.content), True)
     assert_equal("classes='panel alert'" in str(empty.content), True)
@@ -1635,7 +1864,19 @@ def run_new_page_tests() -> None:
     assert_equal("FileVault" in str(device_steps(state, "Mac").content), True)
     device_steps(state, "Linux")
     assert_equal(state.platform, "Mac")
+    assert_equal(device_steps(state, "Mac").state.platform, "Mac")
+    assert_equal(device_steps(state).state.platform, "Mac")
+    assert_equal("Your Mac checklist" in str(device_steps(state).content), True)
+    assert_equal("target='_blank'" in str(device_steps(state).content), True)
     assert_equal(device_steps(state, "Choose a device").state.platform, "")
+    # Reset clears every page's choices, not just the checklist and quiz
+    state.exposures = ["email"]
+    state.platform = "iPhone"
+    state.phish_position = 3
+    state.phish_score = 2
+    state.phish_guess = "Phishing"
+    state.focus = "Accounts"
+    state.tips[1].completed = True
     reset = reset_progress(state).state
     expected = initial_state()
     expected.phish_order = reset.phish_order
@@ -1645,19 +1886,51 @@ def run_new_page_tests() -> None:
 # Run the tests on your computer and during deployment, but not in the
 # visitor's browser ("emscripten"), where each assertion looks up main.py
 # over the network and slows down the first page load.
+# Called directly, not inside assert_equal, so a failure reports the line of
+# the test that failed instead of this one.
 if sys.platform != "emscripten":
-    assert_equal(run_bakery_tests(), None)
+    run_bakery_tests()
 
 set_website_title("Cyber Compass | CISC 106")
 set_website_style("none")
 # The site has its own light and dark themes, so ask the Dark Reader extension
 # not to restyle it (it rewrites colours and breaks the dropdown arrow's position).
+# BOOT_JS adds the same tag sooner, before the loading screen appears;
+# this one is a fallback in case the home page is not prerendered.
 add_website_header('<meta name="darkreader-lock">')
 set_website_framed(False)
 hide_debug_information()
 add_website_css_file("style.css")
-add_website_js_file("theme.js")
-add_website_js_file("private-tools.js")
+# BOOT_JS loads these two scripts (see its comment for why); registering
+# them here keeps them part of the published site.
+add_website_file("theme.js", "private-tools.js")
+# This inline code runs in the browser while the site is being built, just
+# before the first page is drawn, whatever page the visitor opened.
+# 1. BOOT_JS again, in case the prerendered home page (which runs it first)
+#    is missing: then this is what applies the theme and loads both scripts.
+#    Otherwise it stops at once, because it has already run.
+# 2. Fades out the startup loading screen instead of letting it vanish.
+#    Drafter removes it with .remove() as soon as the site is ready, so this
+#    swaps in a version of .remove() that fades first. The page underneath is
+#    usable right away because the fading screen ignores clicks (see "Startup
+#    loading screen" in style.css). A file from add_website_js_file could
+#    load too late for this.
+add_website_js(BOOT_JS + """
+(() => {
+  const loader = document.getElementById('--drafter-initial-loading-white-screen');
+  if (!loader || loader.dataset.fade) return;
+  loader.dataset.fade = 'on';
+  const removeNow = () => Element.prototype.remove.call(loader);
+  loader.remove = () => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return removeNow();
+    loader.classList.add('is-leaving');
+    loader.addEventListener('transitionend', event => {
+      if (event.target === loader) removeNow();
+    });
+    setTimeout(removeNow, 800);
+  };
+})();
+""")
 
 start_server(initial_state(), port=8001, host="127.0.0.1", open_browser=True)
 

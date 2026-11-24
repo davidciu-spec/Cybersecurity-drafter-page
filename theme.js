@@ -2,7 +2,8 @@
    The chosen theme id is the only thing this file saves (localStorage key
    "cyber-compass.theme"). Without a saved choice the site follows the
    device's light/dark setting. Drafter redraws the page on every route, so
-   the picker is built once and moved back into each new navigation bar. */
+   the picker is built once and moved back into each new navigation bar.
+   After each new page this file also moves keyboard focus to its heading. */
 (() => {
   'use strict';
   if (window.cyberCompassTheme) return;
@@ -13,27 +14,36 @@
     { id: 'daylight', mode: 'light', label: 'Daylight', note: 'Crisp white and teal',
       page: '#f4f7fb', surface: '#ffffff', accent: '#0f766e' },
     { id: 'sand', mode: 'light', label: 'Sand', note: 'Warm paper and terracotta',
-      page: '#f8f3ea', surface: '#fffdf8', accent: '#b4501e' },
+      page: '#f8f3ea', surface: '#fffdf8', accent: '#ac4b1b' },
     { id: 'lilac', mode: 'light', label: 'Lilac', note: 'Soft lavender and violet',
       page: '#f6f4fc', surface: '#ffffff', accent: '#6046cd' },
-    { id: 'harbor', mode: 'dark', label: 'Harbor', note: 'Deep navy and teal',
-      page: '#0b1220', surface: '#142238', accent: '#7de0cc' },
-    { id: 'nebula', mode: 'dark', label: 'Nebula', note: 'Midnight plum and violet',
-      page: '#100d1c', surface: '#1c1733', accent: '#b9a2ff' },
-    { id: 'ember', mode: 'dark', label: 'Ember', note: 'Charcoal and amber glow',
-      page: '#14100d', surface: '#211a15', accent: '#ffaa6b' },
+    { id: 'harbor', mode: 'dark', label: 'Harbor', note: 'Slate navy and sea-glass teal',
+      page: '#0d1118', surface: '#1f2836', accent: '#86c9bb' },
+    { id: 'nebula', mode: 'dark', label: 'Nebula', note: 'Dusky plum and soft lavender',
+      page: '#0f0d16', surface: '#2a2540', accent: '#bba9f2' },
+    { id: 'forest', mode: 'dark', label: 'Forest', note: 'Pine green and soft gold',
+      page: '#0c110e', surface: '#1f2c25', accent: '#e3c47e' },
   ];
   const DEFAULTS = { light: 'daylight', dark: 'harbor' };
+  // Themes that were renamed, so an older saved choice still works.
+  // BOOT_SCRIPT in main.py maps the same ids.
+  const RENAMED = { ember: 'forest' };
   const KEY = 'cyber-compass.theme';
   const root = document.documentElement;
   const system = matchMedia('(prefers-color-scheme: dark)');
   const find = id => THEMES.find(theme => theme.id === id);
 
-  const read = () => {
-    try { return find(localStorage.getItem(KEY)) ? localStorage.getItem(KEY) : null; } catch (_) { return null; }
-  };
   const write = id => {
     try { id ? localStorage.setItem(KEY, id) : localStorage.removeItem(KEY); } catch (_) {}
+  };
+  const read = () => {
+    let id = null;
+    try { id = localStorage.getItem(KEY); } catch (_) { return null; }
+    if (Object.prototype.hasOwnProperty.call(RENAMED, id)) {
+      id = RENAMED[id];
+      write(id);
+    }
+    return find(id) ? id : null;
   };
 
   let saved = read(); // null = follow the device
@@ -152,6 +162,7 @@
   }
 
   function choose(id) {
+    if (id && !find(id)) return;
     saved = id || null;
     write(saved);
     apply(true);
@@ -215,9 +226,31 @@
     setOpen(false, false);
     nav.append(menu);
   }
+
+  // Drafter swaps in the whole new page, so the button or link that was used
+  // disappears and keyboard focus falls back to the top of the document.
+  // Move it to the new page's heading instead, so keyboard and screen reader
+  // users land on the new content. The first page draw is left alone.
+  let shownPages = 0;
+  function focusHeading() {
+    if (shownPages++ === 0) return;
+    const active = document.activeElement;
+    if (active && active !== document.body && active.isConnected) return;
+    const heading = document.querySelector('.page-head h1');
+    if (!heading) return;
+    heading.tabIndex = -1;
+    heading.focus({ preventScroll: true });
+  }
+
   render();
   mount();
-  new MutationObserver(mount).observe(document.body, { childList: true, subtree: true });
+  // Drafter fires this after every page it draws (detail.fragment is true
+  // when only part of the page changed). Listening to it is much cheaper than
+  // watching the whole document for changes.
+  window.addEventListener('drafter-page-loaded', event => {
+    mount();
+    if (!event.detail || !event.detail.fragment) focusHeading();
+  });
 
   window.cyberCompassTheme = { THEMES, choose };
 })();
