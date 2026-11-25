@@ -18,7 +18,7 @@
     { id: 'lilac', mode: 'light', label: 'Lilac', note: 'Soft lavender and violet',
       page: '#f6f4fc', surface: '#ffffff', accent: '#6046cd' },
     { id: 'harbor', mode: 'dark', label: 'Harbor', note: 'Slate navy and sea-glass teal',
-      page: '#0d1118', surface: '#1f2836', accent: '#86c9bb' },
+      page: '#0b121d', surface: '#1a273b', accent: '#75d8c5' },
     { id: 'nebula', mode: 'dark', label: 'Nebula', note: 'Dusky plum and soft lavender',
       page: '#0f0d16', surface: '#2a2540', accent: '#bba9f2' },
     { id: 'forest', mode: 'dark', label: 'Forest', note: 'Pine green and soft gold',
